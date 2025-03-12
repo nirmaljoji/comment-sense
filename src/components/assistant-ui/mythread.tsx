@@ -1,3 +1,4 @@
+import { FC } from "react";
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import { ScrollBar } from "@/components/ui/scroll-area";
 import { ThreadPrimitive } from "@assistant-ui/react";
