@@ -9,9 +9,11 @@ import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { ThreadList } from "./assistant-ui/thread-list";
 import { CourseEvalSidebar } from "./assistant-ui/course-eval-sidebar";
 import { useState } from "react";
-import { ToolFallback } from "./tools/ToolFallBack";
+import { CourseEvaluationVectors } from "./tools/CourseEvaluationVectors";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
+import { WebScraping } from "./tools/WebScraping";
+import { TeachingMaterial } from "./tools/TeachingMaterial";
 
 export function MyAssistant() {
   // const runtime = useEdgeRuntime({ api: "/api/chat" });
@@ -56,7 +58,9 @@ export function MyAssistant() {
     <AssistantRuntimeProvider 
     runtime={runtime}
     >
-       <ToolFallback />
+       <CourseEvaluationVectors />
+       <WebScraping />
+       <TeachingMaterial/>
       <div className="grid h-[calc(100vh-4rem)] grid-cols-[280px_1fr]">
         <CourseEvalSidebar
           files={files}
