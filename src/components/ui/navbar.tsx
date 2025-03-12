@@ -3,13 +3,29 @@
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { Progress } from "./progress";
+import { useRouter } from 'next/navigation';
 
 interface NavbarProps {
   requestsUsed?: number;
   requestsLimit?: number;
 }
 
+// Token management utilities
+const TokenManager = {
+  clearTokens: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refresh_token');
+  }
+};
+
 export function Navbar({ requestsUsed = 0, requestsLimit = 100 }: NavbarProps) {
+  const router = useRouter();
+
+  const handleLogout = () => {
+    TokenManager.clearTokens();
+    router.push('/');
+  };
+
   return (
     <div className="border-b bg-white">
       <div className="flex h-16 items-center px-4 md:px-6">
@@ -29,7 +45,7 @@ export function Navbar({ requestsUsed = 0, requestsLimit = 100 }: NavbarProps) {
               />
             </div>
           </div>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" onClick={handleLogout}>
             <LogOut className="h-5 w-5" />
             <span className="sr-only">Logout</span>
           </Button>

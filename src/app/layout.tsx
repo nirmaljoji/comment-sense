@@ -1,8 +1,11 @@
+"use client";
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/ui/navbar";
 import { Toaster } from 'sonner';
+import { usePathname } from 'next/navigation';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,22 +17,21 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "Comment Sense",
-  description: "AI-powered course evaluation analysis",
-};
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = usePathname();
+  const isHomePage = pathname === '/';
+  
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Navbar requestsUsed={45} requestsLimit={100} />
+        {!isHomePage && <Navbar requestsUsed={45} requestsLimit={100} />}
         {children}
         <Toaster />
       </body>
