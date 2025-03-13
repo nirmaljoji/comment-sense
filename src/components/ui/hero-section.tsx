@@ -10,12 +10,15 @@ export function HeroSection() {
         {/* Main heading with 3D effect */}
         <div className="relative">
           <ThreeDText 
-            text="NC STATE" 
+            text="Comment Sense" 
             className="text-6xl md:text-7xl lg:text-8xl tracking-tight"
+            color="from-red-400 to-red-300"
+            shadowColor="rgba(204, 0, 0, 0.2)"
+            layers={4}
           />
           <div className="mt-4 max-w-[42rem]">
-            <h2 className="text-2xl font-semibold text-red-600 dark:text-red-400">
-              Comment Sense
+            <h2 className="text-2xl font-semibold text-red-400 dark:text-red-300">
+              NC State University
             </h2>
             <p className="mt-2 text-lg text-muted-foreground sm:text-xl">
               The intelligent platform for course evaluation analysis.
@@ -34,24 +37,8 @@ export function HeroSection() {
           </Button>
         </div>
         
-        {/* Trust indicators */}
-        <div className="mt-8">
-          <p className="text-sm text-muted-foreground">
-            Trusted by students and faculty across campus
-          </p>
-          <div className="mt-4 flex items-center gap-4">
-            {/* Placeholder for logos/trust badges */}
-            <div className="flex items-center justify-center h-10 w-28 rounded bg-muted">
-              <span className="text-xs text-muted-foreground">College of Engineering</span>
-            </div>
-            <div className="flex items-center justify-center h-10 w-28 rounded bg-muted">
-              <span className="text-xs text-muted-foreground">Student Affairs</span>
-            </div>
-            <div className="flex items-center justify-center h-10 w-28 rounded bg-muted">
-              <span className="text-xs text-muted-foreground">Faculty Senate</span>
-            </div>
-          </div>
-        </div>
+        {/* Spacer div to maintain spacing after removing trust indicators */}
+        <div className="mt-8"></div>
         
         {/* Feature highlights */}
         <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">

@@ -15,6 +15,9 @@ import {
   PencilIcon,
   RefreshCwIcon,
   SendHorizontalIcon,
+  ThumbsUpIcon,
+  ThumbsDownIcon,
+  StarIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -23,10 +26,21 @@ import { Button } from "@/components/ui/button";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 /* -------------------------------------------------------------------------
    useAutoScroll hook – continuously drives the scroll position using
-   requestAnimationFrame and a small “bottom offset” so that the currently
+   requestAnimationFrame and a small "bottom offset" so that the currently
    streaming text remains visible.
 -------------------------------------------------------------------------- */
 function useAutoScroll() {
@@ -341,29 +355,119 @@ const AssistantMessage: FC = () => {
 };
 
 const AssistantActionBar: FC = () => {
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+  const [feedbackType, setFeedbackType] = useState<'positive' | 'negative' | null>(null);
+  const [rating, setRating] = useState(0);
+  const [feedbackText, setFeedbackText] = useState('');
+
+  const handleFeedbackSubmit = () => {
+    // Here you would typically send the feedback data to your backend
+    console.log({
+      feedbackType,
+      rating,
+      feedbackText
+    });
+    
+    // Reset the form
+    setRating(0);
+    setFeedbackText('');
+    setFeedbackDialogOpen(false);
+  };
+
+  const openFeedbackDialog = (type: 'positive' | 'negative') => {
+    setFeedbackType(type);
+    setFeedbackDialogOpen(true);
+  };
+
   return (
-    <ActionBarPrimitive.Root
-      hideWhenRunning
-      autohide="not-last"
-      autohideFloat="single-branch"
-      className="text-muted-foreground flex gap-1 col-start-3 row-start-2 -ml-1 data-[floating]:bg-background data-[floating]:absolute data-[floating]:rounded-md data-[floating]:border data-[floating]:p-1 data-[floating]:shadow-sm"
-    >
-      <ActionBarPrimitive.Copy asChild>
-        <TooltipIconButton tooltip="Copy">
-          <MessagePrimitive.If copied>
-            <CheckIcon />
-          </MessagePrimitive.If>
-          <MessagePrimitive.If copied={false}>
-            <CopyIcon />
-          </MessagePrimitive.If>
+    <>
+      <ActionBarPrimitive.Root
+        hideWhenRunning
+        autohide="not-last"
+        autohideFloat="single-branch"
+        className="text-muted-foreground flex gap-1 col-start-3 row-start-2 -ml-1 data-[floating]:bg-background data-[floating]:absolute data-[floating]:rounded-md data-[floating]:border data-[floating]:p-1 data-[floating]:shadow-sm"
+      >
+        <ActionBarPrimitive.Copy asChild>
+          <TooltipIconButton tooltip="Copy">
+            <MessagePrimitive.If copied>
+              <CheckIcon />
+            </MessagePrimitive.If>
+            <MessagePrimitive.If copied={false}>
+              <CopyIcon />
+            </MessagePrimitive.If>
+          </TooltipIconButton>
+        </ActionBarPrimitive.Copy>
+        <ActionBarPrimitive.Reload asChild>
+          <TooltipIconButton tooltip="Refresh">
+            <RefreshCwIcon />
+          </TooltipIconButton>
+        </ActionBarPrimitive.Reload>
+        <TooltipIconButton 
+          tooltip="Helpful" 
+          onClick={() => openFeedbackDialog('positive')}
+        >
+          <ThumbsUpIcon />
         </TooltipIconButton>
-      </ActionBarPrimitive.Copy>
-      <ActionBarPrimitive.Reload asChild>
-        <TooltipIconButton tooltip="Refresh">
-          <RefreshCwIcon />
+        <TooltipIconButton 
+          tooltip="Not Helpful" 
+          onClick={() => openFeedbackDialog('negative')}
+        >
+          <ThumbsDownIcon />
         </TooltipIconButton>
-      </ActionBarPrimitive.Reload>
-    </ActionBarPrimitive.Root>
+      </ActionBarPrimitive.Root>
+
+      {/* Feedback Dialog */}
+      <Dialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {feedbackType === 'positive' ? 'What was helpful?' : 'What could be improved?'}
+            </DialogTitle>
+            <DialogDescription>
+              Please rate this response and provide any feedback.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {/* Star Rating */}
+          <div className="flex items-center justify-center space-x-1 py-4">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <button
+                key={star}
+                type="button"
+                className={cn(
+                  "rounded-full p-1 focus:outline-none focus:ring-2 focus:ring-primary",
+                  star <= rating ? "text-yellow-400" : "text-gray-300"
+                )}
+                onClick={() => setRating(star)}
+              >
+                <StarIcon className="h-8 w-8" />
+              </button>
+            ))}
+          </div>
+          
+          {/* Feedback Text Area */}
+          <Textarea
+            placeholder={feedbackType === 'positive' ? "What did you find helpful about this response?" : "How could this response be improved?"}
+            value={feedbackText}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFeedbackText(e.target.value)}
+            className="min-h-[100px]"
+          />
+          
+          <DialogFooter className="sm:justify-between">
+            <DialogClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DialogClose>
+            <Button 
+              type="submit" 
+              onClick={handleFeedbackSubmit}
+              disabled={rating === 0}
+            >
+              Submit Feedback
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
