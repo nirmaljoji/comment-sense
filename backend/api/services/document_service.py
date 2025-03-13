@@ -19,7 +19,7 @@ class DocumentService:
         )
         self.embeddings = OpenAIEmbeddings()
 
-    async def process_file(self, file: BinaryIO, filename: str, mime_type: str, file_id: str) -> str:
+    async def process_file(self, file: BinaryIO, filename: str, mime_type: str, file_id: str, chat_id: str) -> str:
         """Process file and store chunks as vectors in MongoDB"""
         try:
             # Detect file type
@@ -36,7 +36,7 @@ class DocumentService:
             documents = await self._load_and_chunk_file(file, file_type, encoding)
             
             # Create vectors and store in MongoDB
-            await self._store_vectors(documents, filename, mime_type, file_id)
+            await self._store_vectors(documents, filename, mime_type, file_id, chat_id)
             
             return "File processed and stored successfully"
         except Exception as e:
@@ -83,7 +83,7 @@ class DocumentService:
         doc = Document(page_content=text)
         return self.text_splitter.split_documents([doc])
 
-    async def _store_vectors(self, documents: List[Document], filename: str, mime_type: str, file_id: str):
+    async def _store_vectors(self, documents: List[Document], filename: str, mime_type: str, file_id: str, chat_id: str):
         """Create embeddings and store in MongoDB"""
         db = MongoDB.get_db()
         vectors_collection = db.evaluations_vectors
@@ -96,6 +96,7 @@ class DocumentService:
                 "content": doc.page_content,
                 "embedding": embedding,
                 "file_id": file_id,
+                "chat_id": chat_id,
                 "metadata": {
                     **doc.metadata,
                     "filename": filename,
@@ -144,4 +145,19 @@ class DocumentService:
             
         except Exception as e:
             logger.error(f"Error deleting vectors for file {file_id}: {e}")
+            raise
+
+    async def delete_vectors_by_chat_id(self, chat_id: str):
+        """Delete all vector embeddings associated with a chat_id from MongoDB"""
+        try:
+            db = MongoDB.get_db()
+            vectors_collection = db.evaluations_vectors
+            
+            # Delete all vectors with matching chat_id
+            delete_result = vectors_collection.delete_many({"chat_id": chat_id})
+            
+            return delete_result.deleted_count
+            
+        except Exception as e:
+            logger.error(f"Error deleting vectors for chat {chat_id}: {e}")
             raise 

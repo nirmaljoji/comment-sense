@@ -6,5 +6,11 @@ class FileModel(BaseModel):
     filename: str
     mime_type: str
     size: int
-    upload_date: datetime = Field(default_factory=datetime.utcnow)
+    user_id: Optional[str] = None
     file_id: str
+    chat_id: str
+    file_path: str
+    created_at: datetime = datetime.utcnow()
+
+    class Config:
+        from_attributes = True

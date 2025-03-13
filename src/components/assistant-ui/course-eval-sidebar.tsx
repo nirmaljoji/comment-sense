@@ -65,11 +65,15 @@ export function CourseEvalSidebar({ files, onDeleteFile, onFileUploaded }: Cours
     
     formData.append('file', file);
     formData.append('file_id', fileId);
+    const token = localStorage.getItem('token');
 
     try {
       const response = await fetch(`${API_URL}/api/files/upload`, {
         method: 'POST',
         body: formData,
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (!response.ok) {

@@ -6,9 +6,10 @@ from langchain_core.prompts import PromptTemplate
 from langchain_mongodb import MongoDBAtlasVectorSearch
 from langchain_openai import OpenAIEmbeddings
 import traceback
+from langchain_core.runnables import RunnableConfig
 
 @tool
-def get_evaluations_context(query: str):
+def get_evaluations_context(query: str, config: RunnableConfig,):
     """Only to Retrieve relevant context from evaluations using vector search. Do not use if question is not related to Course Evalutation"""
     try:
         print(f"get_evaluations_context received query: '{query}'")
@@ -18,7 +19,15 @@ def get_evaluations_context(query: str):
             
         db = MongoDB.get_db()
         vectors_collection = db.evaluations_vectors
-
+        metadata = config.get("configurable", {}).get("metadata", {})
+        current_chat_id = metadata.get("langfuse_session_id")
+        
+        if not current_chat_id:
+            print(f"Warning: No chat_id found in config. Config metadata: {metadata}")
+            return "Error: No chat_id provided in the configuration"
+            
+        print(f"Using chat_id for filter: {current_chat_id}")
+        
         vector_store = MongoDBAtlasVectorSearch(
             embedding=OpenAIEmbeddings(disallowed_special=()),
             collection=vectors_collection,
@@ -26,7 +35,32 @@ def get_evaluations_context(query: str):
         )
         
         print(f"Executing vector search with query: '{query}'")
-        results = vector_store.similarity_search_with_score(query )
+        
+        # First try without any filter to verify vector search works at all
+        print("Testing vector search without filter first...")
+        test_results = vector_store.similarity_search_with_score(query, k=10)
+        print(f"Vector search without filter found {len(test_results)} results")
+        
+        # Now try with the filter using correct Atlas Search syntax
+        pre_filter = {
+            "chat_id": {
+                "$eq": str(current_chat_id)
+            }
+        }
+        print(f"Applying pre_filter: {pre_filter}")
+        
+        # Let's also print a sample document to verify the structure
+        sample_doc = vectors_collection.find_one({"chat_id": str(current_chat_id)})
+        print(f"Sample document found with this chat_id: {sample_doc is not None}")
+        if sample_doc:
+            print(f"Sample document fields: {list(sample_doc.keys())}")
+            print(f"Sample document chat_id value and type: {sample_doc['chat_id']} ({type(sample_doc['chat_id'])})")
+        
+        results = vector_store.similarity_search_with_score(
+            query, 
+            pre_filter=pre_filter,
+            k=10
+        )
         
         contexts = []
         for doc, score in results:

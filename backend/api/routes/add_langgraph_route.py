@@ -14,7 +14,7 @@ from typing import List, Literal, Union, Optional, Any
 from dotenv import load_dotenv
 from langfuse.callback import CallbackHandler
 from langfuse.client import Langfuse
-from ..utils.auth import get_current_user
+from ..utils.deps import get_current_user
 # Load environment variables
 load_dotenv(".env")
 
@@ -222,7 +222,8 @@ You exist to help professors become more effective educators. Your ultimate meas
                     "frontend_tools": request.tools,
                     "metadata": {
                         "langfuse_session_id": x_chat_id,
-                        "current_user": current_user["email"]
+                        "current_user": current_user.email,
+                        "current_id": current_user.id
                     }
                 }
             }

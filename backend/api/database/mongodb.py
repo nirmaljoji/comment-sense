@@ -51,6 +51,10 @@ class MongoDB:
                                 "numDimensions": 1536,
                                 "path": "embedding",
                                 "similarity": "cosine"
+                            },
+                            {
+                                "path": "chat_id",
+                                "type": "filter"
                             }
                         ]
                     },

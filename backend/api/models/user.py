@@ -22,4 +22,21 @@ class UserResponse(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str
-    token_type: str = "bearer" 
+    token_type: str = "bearer"
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
+class UserInDB(BaseModel):
+    id: str = Field(alias="_id")
+    email: EmailStr
+    hashed_password: str
+    created_at: datetime
+    active_chat_id: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
+        json_encoders = {
+            datetime: lambda v: v.isoformat()
+        } 
