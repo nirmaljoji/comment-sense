@@ -15,4 +15,4 @@ jobs:
           retries: 20
           wait: 16000
           sleep: 30000
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
