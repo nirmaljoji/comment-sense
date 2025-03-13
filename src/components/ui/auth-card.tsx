@@ -4,9 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { Button } from './button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './card';
 import { useRouter } from 'next/navigation';
+import { getApiUrl } from '@/lib/utils'
 
 // Backend API URL - you can also use an environment variable
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = getApiUrl();
 
 // Token management utilities
 const TokenManager = {

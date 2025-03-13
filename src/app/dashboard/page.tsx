@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MyAssistant } from '@/components/MyAssistant';
 import { jwtDecode } from 'jwt-decode';
+import { getApiUrl } from '@/lib/utils'
 
 // Backend API URL - you can also use an environment variable
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = getApiUrl();
 
 // Token will be refreshed if it expires in less than this many seconds
 const TOKEN_REFRESH_THRESHOLD = 5 * 60; // 5 minutes in seconds

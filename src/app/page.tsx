@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import { HeroSection } from "@/components/ui/hero-section";
 import { AuthCard } from "@/components/ui/auth-card";
 import { BackgroundPattern } from "@/components/ui/background-pattern";
+import { getApiUrl } from '@/lib/utils'
 
 // Backend API URL - you can also use an environment variable
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = getApiUrl();
 
 export default function Home() {
   const router = useRouter();

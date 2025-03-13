@@ -18,6 +18,7 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from "@/lib/logger";
+import { getApiUrl } from '@/lib/utils'
 
 interface CourseEvalSidebarProps {
   files: { id: string; name: string }[];
@@ -29,6 +30,8 @@ interface CourseEvalSidebarProps {
 export function CourseEvalSidebar({ files, onDeleteFile, onFileUploaded }: CourseEvalSidebarProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
+
+  const API_URL = getApiUrl()
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -64,7 +67,7 @@ export function CourseEvalSidebar({ files, onDeleteFile, onFileUploaded }: Cours
     formData.append('file_id', fileId);
 
     try {
-      const response = await fetch('http://localhost:8000/api/files/upload', {
+      const response = await fetch(`${API_URL}/api/files/upload`, {
         method: 'POST',
         body: formData,
       });

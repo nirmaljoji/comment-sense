@@ -14,11 +14,13 @@ import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 import { WebScraping } from "./tools/WebScraping";
 import { TeachingMaterial } from "./tools/TeachingMaterial";
+import { getApiUrl } from '@/lib/utils'
 
 export function MyAssistant() {
   // const runtime = useEdgeRuntime({ api: "/api/chat" });
+  const API_URL = getApiUrl()
   const runtime = useChatRuntime({
-    api: 'http://localhost:8000/api/chat',
+    api: `${API_URL}/api/chat`,
   });
 
   // This is example data - you should replace this with your actual file management logic
@@ -27,7 +29,7 @@ export function MyAssistant() {
   const handleDeleteFile = async (id: string) => {
     try {
       // Call API to delete file
-      const response = await fetch(`http://localhost:8000/api/files/${id}`, {
+      const response = await fetch(`${API_URL}/api/files/${id}`, {
         method: 'DELETE',
       });
 
