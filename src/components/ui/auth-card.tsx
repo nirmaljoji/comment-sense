@@ -270,7 +270,13 @@ export function AuthCard() {
               <p>
                 Already have an account?{' '}
                 <button 
-                  onClick={() => setIsSignUp(false)}
+                  onClick={() => {
+                    setIsSignUp(false);
+                    setError('');
+                    setEmail('');
+                    setPassword('');
+                    setConfirmPassword('');
+                  }}
                   className="text-red-600 hover:underline"
                 >
                   Sign in
@@ -280,7 +286,13 @@ export function AuthCard() {
               <p>
                 Don't have an account?{' '}
                 <button 
-                  onClick={() => setIsSignUp(true)}
+                  onClick={() => {
+                    setIsSignUp(true);
+                    setError('');
+                    setEmail('');
+                    setPassword('');
+                    setConfirmPassword('');
+                  }}
                   className="text-red-600 hover:underline"
                 >
                   Create one

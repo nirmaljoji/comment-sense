@@ -10,7 +10,7 @@ from .tools import tools
 from .state import AgentState
 import os
 from dotenv import load_dotenv
-
+from langfuse.callback import CallbackHandler
 # Load environment variables
 load_dotenv()
 
@@ -19,6 +19,16 @@ model = ChatOpenAI(
     model="gpt-4"
 )
 
+# Initialize langfuse handler with None values
+langfuse_handler = None
+
+def initialize_langfuse_handler(user_id=None, session_id=None):
+    global langfuse_handler
+    langfuse_handler = CallbackHandler(
+        user_id=user_id,
+        session_id=session_id
+    )
+    return langfuse_handler
 
 def should_continue(state):
     messages = state["messages"]
@@ -146,7 +156,22 @@ workflow.add_conditional_edges(
 )
 
 workflow.add_edge("tools", "agent")
-assistant_ui_graph = workflow.compile()
+
+def create_assistant_graph(config):
+    """Create a new instance of the assistant graph with proper configuration"""
+    # Get user_id and session_id from config
+    metadata = config.get("configurable", {}).get("metadata", {})
+    user_email = metadata.get("current_user", {})
+    session_id = metadata.get("langfuse_session_id", "default_session")
+    
+    # Initialize langfuse handler with the config values
+    handler = initialize_langfuse_handler(user_id=user_email, session_id=session_id)
+    
+    # Compile the graph with the handler
+    return workflow.compile().with_config({"callbacks": [handler]})
+
+# Export the graph creation function
+assistant_ui_graph = create_assistant_graph
 
 
 # Make sure to add proper cleanup for MCP client when your application shuts down

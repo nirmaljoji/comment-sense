@@ -22,11 +22,14 @@ interface MyAssistantProps {
 
 export function MyAssistant({ chatId }: MyAssistantProps) {
   // const runtime = useEdgeRuntime({ api: "/api/chat" });
+
+  const token = localStorage.getItem('token');
   const API_URL = getApiUrl()
   const runtime = useChatRuntime({
     api: `${API_URL}/api/chat`,
     headers: {
-      'X-Chat-ID': chatId || ''
+      'X-Chat-ID': chatId || '',
+      'Authorization': `Bearer ${token}`
     }
   });
 

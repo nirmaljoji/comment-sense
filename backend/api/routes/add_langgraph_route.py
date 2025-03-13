@@ -8,25 +8,16 @@ from langchain_core.messages import (
     SystemMessage,
     BaseMessage,
 )
-from fastapi import FastAPI, Header
+from fastapi import FastAPI, Header, Depends
 from pydantic import BaseModel
 from typing import List, Literal, Union, Optional, Any
 from dotenv import load_dotenv
 from langfuse.callback import CallbackHandler
 from langfuse.client import Langfuse
+from ..utils.auth import get_current_user
 # Load environment variables
 load_dotenv(".env")
 
-
-# Initialize Langfuse handler
-langfuse_handler = CallbackHandler()
-# Test the SDK connection with the server
-try:
-    langfuse_handler.auth_check()
-    langfuse_handler.flush()
-    print("Langfuse connection successful")
-except Exception as e:
-    print(f"Langfuse connection failed: {e}")
 
 
 class LanguageModelTextPart(BaseModel):
@@ -213,7 +204,7 @@ You exist to help professors become more effective educators. Your ultimate meas
     """
 
 
-    async def chat_completions(request: ChatRequest, x_chat_id: Optional[str] = Header(None, alias="X-Chat-ID")):
+    async def chat_completions(request: ChatRequest, x_chat_id: Optional[str] = Header(None, alias="X-Chat-ID"), current_user: dict = Depends(get_current_user)):
         print(f"Current chat ID: {x_chat_id}")  # Print the chat ID
         inputs = convert_to_langchain_messages(request.messages)
         system_msg = SystemMessage(content=SYSTEM_MESSAGE)
@@ -224,15 +215,22 @@ You exist to help professors become more effective educators. Your ultimate meas
             tool_calls_by_idx = {}
             pending_tool_messages = {}  # Store tool messages that arrive early
 
-            async for msg, metadata in graph.astream(
-                {"messages": all_messages},
-                {
-                    "configurable": {
-                        "system": request.system,
-                        "frontend_tools": request.tools,
-                        "callbacks": [langfuse_handler],
+            # Create the graph instance with the current configuration
+            config = {
+                "configurable": {
+                    "system": request.system,
+                    "frontend_tools": request.tools,
+                    "metadata": {
+                        "langfuse_session_id": x_chat_id,
+                        "current_user": current_user["email"]
                     }
-                },
+                }
+            }
+            graph_instance = graph(config)
+
+            async for msg, metadata in graph_instance.astream(
+                {"messages": all_messages},
+                config,
                 stream_mode="messages"
             ):
                 if isinstance(msg, ToolMessage):
