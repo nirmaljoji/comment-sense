@@ -16,11 +16,18 @@ import { WebScraping } from "./tools/WebScraping";
 import { TeachingMaterial } from "./tools/TeachingMaterial";
 import { getApiUrl } from '@/lib/utils'
 
-export function MyAssistant() {
+interface MyAssistantProps {
+  chatId: string | null;
+}
+
+export function MyAssistant({ chatId }: MyAssistantProps) {
   // const runtime = useEdgeRuntime({ api: "/api/chat" });
   const API_URL = getApiUrl()
   const runtime = useChatRuntime({
     api: `${API_URL}/api/chat`,
+    headers: {
+      'X-Chat-ID': chatId || ''
+    }
   });
 
   // This is example data - you should replace this with your actual file management logic

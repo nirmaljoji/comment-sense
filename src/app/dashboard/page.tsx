@@ -24,6 +24,10 @@ interface TokenResponse {
   token_type: string;
 }
 
+interface ChatIdResponse {
+  active_chat_id: string;
+}
+
 // Token management utilities
 const TokenManager = {
   getAccessToken: () => localStorage.getItem('token'),
@@ -43,6 +47,7 @@ const TokenManager = {
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
+  const [chatId, setChatId] = useState<string | null>(null);
   const router = useRouter();
 
   // Function to check if token is close to expiry
@@ -102,8 +107,31 @@ export default function Dashboard() {
     }
   };
 
+  // Function to set a new chat ID
+  const setNewChatId = async (accessToken: string): Promise<string> => {
+    try {
+      const response = await fetch(`${API_URL}/api/auth/set-chat-id`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to set chat ID');
+      }
+
+      const data: ChatIdResponse = await response.json();
+      setChatId(data.active_chat_id);
+      return data.active_chat_id;
+    } catch (error) {
+      console.error('Error setting chat ID:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
-    // Authentication check with token refresh
+    // Authentication check with token refresh and chat ID setup
     const verifyAndRefreshToken = async () => {
       try {
         if (!TokenManager.hasValidTokens()) {
@@ -112,11 +140,13 @@ export default function Dashboard() {
         }
 
         const token = TokenManager.getAccessToken();
+        let currentAccessToken = token;
         
         // Check if token is about to expire
         if (token && isTokenExpiringSoon(token)) {
           try {
             const { accessToken } = await refreshTokens();
+            currentAccessToken = accessToken;
             // Use new access token for verification
             const response = await fetch(`${API_URL}/api/auth/me`, {
               headers: {
@@ -127,12 +157,18 @@ export default function Dashboard() {
             if (!response.ok) {
               TokenManager.clearTokens();
               router.push('/');
+              return;
             }
           } catch (refreshError) {
             TokenManager.clearTokens();
             router.push('/');
             return;
           }
+        }
+
+        // Set new chat ID after successful authentication
+        if (currentAccessToken) {
+          await setNewChatId(currentAccessToken);
         }
       } catch (error) {
         console.error('Error verifying authentication:', error);
@@ -170,7 +206,7 @@ export default function Dashboard() {
   return (
     <main className="flex flex-col h-[calc(100vh-64px)]">
       <div className="flex-1">
-        <MyAssistant />
+        <MyAssistant chatId={chatId} />
       </div>
     </main>
   );

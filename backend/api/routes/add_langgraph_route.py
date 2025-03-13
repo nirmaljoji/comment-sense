@@ -8,7 +8,7 @@ from langchain_core.messages import (
     SystemMessage,
     BaseMessage,
 )
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
 from pydantic import BaseModel
 from typing import List, Literal, Union, Optional, Any
 from dotenv import load_dotenv
@@ -23,6 +23,7 @@ langfuse_handler = CallbackHandler()
 # Test the SDK connection with the server
 try:
     langfuse_handler.auth_check()
+    langfuse_handler.flush()
     print("Langfuse connection successful")
 except Exception as e:
     print(f"Langfuse connection failed: {e}")
@@ -212,9 +213,9 @@ You exist to help professors become more effective educators. Your ultimate meas
     """
 
 
-    async def chat_completions(request: ChatRequest):
+    async def chat_completions(request: ChatRequest, x_chat_id: Optional[str] = Header(None, alias="X-Chat-ID")):
+        print(f"Current chat ID: {x_chat_id}")  # Print the chat ID
         inputs = convert_to_langchain_messages(request.messages)
-
         system_msg = SystemMessage(content=SYSTEM_MESSAGE)
         all_messages = [system_msg] + inputs
 
@@ -229,7 +230,7 @@ You exist to help professors become more effective educators. Your ultimate meas
                     "configurable": {
                         "system": request.system,
                         "frontend_tools": request.tools,
-                        "callbacks": [langfuse_handler]
+                        "callbacks": [langfuse_handler],
                     }
                 },
                 stream_mode="messages"

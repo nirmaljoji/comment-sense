@@ -135,4 +135,22 @@ async def get_user_me(current_user: dict = Depends(get_current_user)):
 async def logout():
     # JWT is stateless, so we don't need to do anything server-side
     # The client should remove both access and refresh tokens from storage
-    return {"message": "Successfully logged out"} 
+    return {"message": "Successfully logged out"}
+
+@router.post("/set-chat-id")
+async def set_chat_id(current_user: dict = Depends(get_current_user)):
+    """
+    Sets a new chat ID for the current user. Called when dashboard loads or refreshes.
+    """
+    db = MongoDB.get_db()
+    
+    # Generate a simple chat ID using timestamp for uniqueness
+    new_chat_id = str(int(datetime.utcnow().timestamp()))
+    
+    # Update the user's active_chat_id
+    db.users.update_one(
+        {"_id": ObjectId(current_user["id"])},
+        {"$set": {"active_chat_id": new_chat_id}}
+    )
+    
+    return {"active_chat_id": new_chat_id} 

@@ -14,6 +14,7 @@ class UserResponse(BaseModel):
     id: str
     email: EmailStr
     created_at: datetime
+    active_chat_id: Optional[str] = None
     
     class Config:
         from_attributes = True
