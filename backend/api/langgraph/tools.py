@@ -8,58 +8,37 @@ from langchain_openai import OpenAIEmbeddings
 import traceback
 from langchain_core.runnables import RunnableConfig
 
+
 @tool
-def get_evaluations_context(query: str, config: RunnableConfig,):
+def get_evaluations_context(query: str, config: RunnableConfig):
     """Only to Retrieve relevant context from evaluations using vector search. Do not use if question is not related to Course Evalutation"""
     try:
         print(f"get_evaluations_context received query: '{query}'")
+
+        metadata = config.get("configurable", {}).get("metadata", {})
+        session_id = metadata.get("langfuse_session_id")
         
         if not query or not isinstance(query, str):
             return f"Error: Invalid query parameter. Received: {type(query)}: {query}"
             
         db = MongoDB.get_db()
         vectors_collection = db.evaluations_vectors
-        metadata = config.get("configurable", {}).get("metadata", {})
-        current_chat_id = metadata.get("langfuse_session_id")
-        
-        if not current_chat_id:
-            print(f"Warning: No chat_id found in config. Config metadata: {metadata}")
-            return "Error: No chat_id provided in the configuration"
-            
-        print(f"Using chat_id for filter: {current_chat_id}")
-        
+
+        # Initialize vector store with proper parameters
         vector_store = MongoDBAtlasVectorSearch(
-            embedding=OpenAIEmbeddings(disallowed_special=()),
+            embedding=OpenAIEmbeddings(model="text-embedding-3-large"),
             collection=vectors_collection,
-            index_name="evaluations_index"
+            index_name="evaluations_index",
+            relevance_score_fn="cosine",
         )
         
-        print(f"Executing vector search with query: '{query}'")
+        print(f"Executing vector search with query and session Id: '{query}' and '{session_id}")
         
-        # First try without any filter to verify vector search works at all
-        print("Testing vector search without filter first...")
-        test_results = vector_store.similarity_search_with_score(query, k=10)
-        print(f"Vector search without filter found {len(test_results)} results")
-        
-        # Now try with the filter using correct Atlas Search syntax
-        pre_filter = {
-            "chat_id": {
-                "$eq": str(current_chat_id)
-            }
-        }
-        print(f"Applying pre_filter: {pre_filter}")
-        
-        # Let's also print a sample document to verify the structure
-        sample_doc = vectors_collection.find_one({"chat_id": str(current_chat_id)})
-        print(f"Sample document found with this chat_id: {sample_doc is not None}")
-        if sample_doc:
-            print(f"Sample document fields: {list(sample_doc.keys())}")
-            print(f"Sample document chat_id value and type: {sample_doc['chat_id']} ({type(sample_doc['chat_id'])})")
-        
+        # Use pre_filter to filter by session_id (stored in source field)
         results = vector_store.similarity_search_with_score(
             query, 
-            pre_filter=pre_filter,
-            k=10
+            k=5,
+            pre_filter={"source": {"$eq": session_id}}
         )
         
         contexts = []
@@ -67,6 +46,7 @@ def get_evaluations_context(query: str, config: RunnableConfig,):
             print(f"* [SIM={score:.3f}] {doc.page_content[:200]}...")
             contexts.append({
                 "content": doc.page_content,
+                "metadata": doc.metadata,
                 "similarity_score": score
             })
         
@@ -93,9 +73,10 @@ def get_teaching_material_context(query: str):
         
         # Use vector search to find relevant teaching materials
         vector_store = MongoDBAtlasVectorSearch(
-            embedding=OpenAIEmbeddings(disallowed_special=()),
+            embedding=OpenAIEmbeddings(model="text-embedding-3-large"),
             collection=teaching_materials_collection,
-            index_name="teaching_materials_index"
+            index_name="teaching_materials_index",
+            relevance_score_fn="cosine",
         )
         
         print(f"Executing teaching materials vector search with query: '{query}'")
@@ -106,6 +87,7 @@ def get_teaching_material_context(query: str):
             print(f"* [SIM={score:.3f}] {doc.page_content[:200]}...")
             materials.append({
                 "content": doc.page_content,
+                "metadata": doc.metadata,
                 "similarity_score": score,
             })
         

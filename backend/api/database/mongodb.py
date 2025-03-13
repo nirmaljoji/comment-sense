@@ -38,7 +38,7 @@ class MongoDB:
                 logger.info("Created evaluations_vectors collection")
             
             # Check if index exists
-            indexes = list(collection.list_indexes())
+            indexes = list(collection.list_search_indexes())
             index_exists = any(index.get("name") == "evaluations_index" for index in indexes)
             
             if not index_exists:
@@ -48,12 +48,12 @@ class MongoDB:
                         "fields": [
                             {
                                 "type": "vector",
-                                "numDimensions": 1536,
+                                "numDimensions": 3072,
                                 "path": "embedding",
                                 "similarity": "cosine"
                             },
                             {
-                                "path": "chat_id",
+                                "path": "source",
                                 "type": "filter"
                             }
                         ]
