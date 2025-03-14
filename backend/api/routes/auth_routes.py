@@ -35,7 +35,9 @@ async def signup(user_data: UserCreate):
     new_user = {
         "email": user_data.email,
         "hashed_password": hashed_password,
-        "created_at": datetime.utcnow()
+        "created_at": datetime.utcnow(),
+        "requests_used": 0,
+        "requests_limit": 100
     }
     
     result = db.users.insert_one(new_user)
@@ -120,7 +122,9 @@ async def get_user_me(current_user: UserInDB = Depends(get_current_user)):
         "id": str(current_user.id),
         "email": current_user.email,
         "created_at": current_user.created_at,
-        "active_chat_id": current_user.active_chat_id
+        "active_chat_id": current_user.active_chat_id,
+        "requests_used": current_user.requests_used,
+        "requests_limit": current_user.requests_limit
     }
 
 @router.post("/logout")

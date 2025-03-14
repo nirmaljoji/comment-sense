@@ -15,6 +15,8 @@ class UserResponse(BaseModel):
     email: EmailStr
     created_at: datetime
     active_chat_id: Optional[str] = None
+    requests_used: int = 0
+    requests_limit: int = 100
     
     class Config:
         from_attributes = True
@@ -33,6 +35,8 @@ class UserInDB(BaseModel):
     hashed_password: str
     created_at: datetime
     active_chat_id: Optional[str] = None
+    requests_used: int = 0
+    requests_limit: int = 100
 
     class Config:
         from_attributes = True

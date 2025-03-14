@@ -8,14 +8,16 @@ from langchain_core.messages import (
     SystemMessage,
     BaseMessage,
 )
-from fastapi import FastAPI, Header, Depends
+from fastapi import FastAPI, Header, Depends, HTTPException, status
 from pydantic import BaseModel
 from typing import List, Literal, Union, Optional, Any
 from dotenv import load_dotenv
 from langfuse.callback import CallbackHandler
 from langfuse.client import Langfuse
 from ..utils.deps import get_current_user
-# Load environment variables
+from pymongo import MongoClient
+from bson.objectid import ObjectId
+from ..database.mongodb import MongoDB
 load_dotenv(".env")
 
 
@@ -206,6 +208,23 @@ You exist to help professors become more effective educators. Your ultimate meas
 
     async def chat_completions(request: ChatRequest, x_chat_id: Optional[str] = Header(None, alias="X-Chat-ID"), current_user: dict = Depends(get_current_user)):
         print(f"Current chat ID: {x_chat_id}")  # Print the chat ID
+        
+        # Check and update request count
+        db = MongoDB.get_db()
+        user = db.users.find_one({"_id": ObjectId(current_user.id)})
+        
+        if user["requests_used"] >= user["requests_limit"]:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Request limit exceeded"
+            )
+            
+        # Increment request count
+        db.users.update_one(
+            {"_id": ObjectId(current_user.id)},
+            {"$inc": {"requests_used": 1}}
+        )
+        
         inputs = convert_to_langchain_messages(request.messages)
         system_msg = SystemMessage(content=SYSTEM_MESSAGE)
         all_messages = [system_msg] + inputs

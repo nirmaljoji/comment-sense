@@ -278,40 +278,59 @@ const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
 const ThreadWelcome: FC = () => {
   return (
     <ThreadPrimitive.Empty>
-      <div className="flex w-full max-w-[var(--thread-max-width)] flex-grow flex-col">
-        <div className="flex w-full flex-grow flex-col items-center justify-center">
-          <p className="mt-4 font-medium">How can I help you today?</p>
+      <div className="flex w-full max-w-[var(--thread-max-width)] flex-col items-center space-y-5 py-8">
+        {/* Simple animated icon - academic hat with sparkle */}
+        <div className="relative size-14 text-blue-600 dark:text-blue-400">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="size-14 animate-pulse">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+          <span className="absolute -right-1 -top-1 text-yellow-400">
+            <svg viewBox="0 0 24 24" fill="currentColor" className="size-5 animate-bounce" style={{ animationDuration: '2s' }}>
+              <path d="M12 2L15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2z" />
+            </svg>
+          </span>
         </div>
-        <ThreadWelcomeSuggestions />
+        
+        {/* Title and description */}
+        <div className="text-center space-y-2 max-w-md">
+          <h3 className="text-xl font-semibold">Course Evaluation Assistant</h3>
+          <p className="text-sm text-muted-foreground">
+            Upload evaluations, get insights, and discover strategies to enhance your teaching.
+          </p>
+        </div>
+        
+        {/* Example questions - just two as requested */}
+        <div className="flex flex-col sm:flex-row w-full gap-3 max-w-md">
+          <ThreadPrimitive.Suggestion
+            className="hover:bg-blue-50 dark:hover:bg-blue-900/20 flex flex-col justify-center rounded-lg border border-blue-100 dark:border-blue-900/30 p-2.5 transition-colors ease-in text-center"
+            prompt="What areas from my course evaluations need the most improvement?"
+            method="replace"
+            autoSend
+          >
+            <span className="text-sm">
+              Analyze evaluation weak points
+            </span>
+          </ThreadPrimitive.Suggestion>
+          
+          <ThreadPrimitive.Suggestion
+            className="hover:bg-blue-50 dark:hover:bg-blue-900/20 flex flex-col justify-center rounded-lg border border-blue-100 dark:border-blue-900/30 p-2.5 transition-colors ease-in text-center"
+            prompt="Analyze https://cft.vanderbilt.edu/guides-sub-pages/student-evaluations/ for teaching improvement tips"
+            method="replace"
+            autoSend
+          >
+            <span className="text-sm">
+              Extract tips from URL
+            </span>
+          </ThreadPrimitive.Suggestion>
+        </div>
+        
+        {/* Feedback reminder */}
+        <div className="flex items-center text-xs text-muted-foreground pt-4">
+          <ThumbsUpIcon className="size-3.5 mr-1.5" />
+          <span>Your feedback helps us improve this assistant</span>
+        </div>
       </div>
     </ThreadPrimitive.Empty>
-  );
-};
-
-const ThreadWelcomeSuggestions: FC = () => {
-  return (
-    <div className="mt-3 flex w-full items-stretch justify-center gap-4">
-      <ThreadPrimitive.Suggestion
-        className="hover:bg-muted/80 flex max-w-sm grow basis-0 flex-col items-center justify-center rounded-lg border p-3 transition-colors ease-in"
-        prompt="What is the weather in Tokyo?"
-        method="replace"
-        autoSend
-      >
-        <span className="line-clamp-2 text-ellipsis text-sm font-semibold">
-          What is the weather in Tokyo?
-        </span>
-      </ThreadPrimitive.Suggestion>
-      <ThreadPrimitive.Suggestion
-        className="hover:bg-muted/80 flex max-w-sm grow basis-0 flex-col items-center justify-center rounded-lg border p-3 transition-colors ease-in"
-        prompt="What is assistant-ui?"
-        method="replace"
-        autoSend
-      >
-        <span className="line-clamp-2 text-ellipsis text-sm font-semibold">
-          What is assistant-ui?
-        </span>
-      </ThreadPrimitive.Suggestion>
-    </div>
   );
 };
 

@@ -9,27 +9,46 @@ import { AssistantRuntimeProvider } from "@assistant-ui/react";
 import { ThreadList } from "./assistant-ui/thread-list";
 import { CourseEvalSidebar } from "./assistant-ui/course-eval-sidebar";
 import { useState } from "react";
+import { useEffect } from "react";
 import { CourseEvaluationVectors } from "./tools/CourseEvaluationVectors";
 import { toast } from "sonner";
 import { logger } from "@/lib/logger";
 import { WebScraping } from "./tools/WebScraping";
 import { TeachingMaterial } from "./tools/TeachingMaterial";
 import { getApiUrl } from '@/lib/utils'
+import { useRequestStats } from "@/components/ui/navbar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface MyAssistantProps {
   chatId: string | null;
 }
 
 export function MyAssistant({ chatId }: MyAssistantProps) {
-  // const runtime = useEdgeRuntime({ api: "/api/chat" });
-
+  const [rateLimitDialogOpen, setRateLimitDialogOpen] = useState(false);
   const token = localStorage.getItem('token');
   const API_URL = getApiUrl()
+  const { incrementRequests } = useRequestStats();
+
   const runtime = useChatRuntime({
     api: `${API_URL}/api/chat`,
     headers: {
       'X-Chat-ID': chatId || '',
       'Authorization': `Bearer ${token}`
+    },
+    onResponse: async (response) => {
+      if (response.ok) {
+        incrementRequests();
+      } else if (response.status === 429) {
+        setRateLimitDialogOpen(true);
+      }
     }
   });
 
@@ -70,9 +89,25 @@ export function MyAssistant({ chatId }: MyAssistantProps) {
     <AssistantRuntimeProvider 
     runtime={runtime}
     >
-       <CourseEvaluationVectors />
-       <WebScraping />
-       <TeachingMaterial/>
+      <Dialog open={rateLimitDialogOpen} onOpenChange={setRateLimitDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Rate Limit Exceeded</DialogTitle>
+            <DialogDescription>
+              You have exceeded the request limit. Please contact the developers to increase your limit.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="destructive" onClick={() => setRateLimitDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      <CourseEvaluationVectors />
+      <WebScraping />
+      <TeachingMaterial/>
       <div className="grid h-[calc(100vh-4rem)] grid-cols-[280px_1fr]">
         <CourseEvalSidebar
           files={files}
