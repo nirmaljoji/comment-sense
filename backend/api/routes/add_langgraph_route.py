@@ -16,6 +16,7 @@ from ..models.user import UserInDB
 from fastapi import Depends, HTTPException, status
 from ..database.mongodb import MongoDB
 from bson import ObjectId
+from langfuse.callback import CallbackHandler
 
 class LanguageModelTextPart(BaseModel):
     type: Literal["text"]
@@ -125,6 +126,7 @@ def convert_to_langchain_messages(
                 for p in msg.content
                 if isinstance(p, LanguageModelToolCallPart)
             ]
+            print(tool_calls)
             result.append(AIMessage(content=text_content, tool_calls=tool_calls))
 
         elif msg.role == "tool":
@@ -201,7 +203,10 @@ def add_langgraph_route(app: FastAPI, graph, path: str, current_user: UserInDB =
    
     async def chat_completions(request: ChatRequest, x_chat_id: Optional[str] = Header(None, alias="X-Chat-ID"), current_user: dict = Depends(get_current_user)):
         inputs = convert_to_langchain_messages(request.messages)
-
+        langfuse_handler = CallbackHandler(
+            user_id=current_user.email,
+            session_id=x_chat_id
+        )
                 # Check and update request count
         db = MongoDB.get_db()
         user = db.users.find_one({"_id": ObjectId(current_user.id)})
@@ -228,7 +233,7 @@ def add_langgraph_route(app: FastAPI, graph, path: str, current_user: UserInDB =
 
             async for msg, metadata in graph.astream(
                 {"messages": all_messages},
-                {
+                config ={
                     "configurable": {
                         "system": request.system,
                         "frontend_tools": request.tools,
@@ -236,10 +241,11 @@ def add_langgraph_route(app: FastAPI, graph, path: str, current_user: UserInDB =
                             "langfuse_session_id": x_chat_id,
                             "current_user": current_user.email,
                             "current_id": current_user.id
-                        }
-                    }
+                        },
+                    },
+                     "callbacks": [langfuse_handler]
                 },
-                stream_mode="messages",
+                stream_mode="messages"
             ):
                 if isinstance(msg, ToolMessage):
                     tool_controller = tool_calls.get(msg.tool_call_id)

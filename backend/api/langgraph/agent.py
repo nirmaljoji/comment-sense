@@ -1,4 +1,5 @@
 from langchain_openai import ChatOpenAI
+from typing_extensions import Literal, TypedDict, Dict, List, Any, Union, Optional
 from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import ToolNode
 from langchain_core.messages import SystemMessage
@@ -7,9 +8,31 @@ from langchain_core.tools import BaseTool
 from pydantic import BaseModel
 from .tools import tools
 from .state import AgentState
+from langchain_mcp_adapters.client import MultiServerMCPClient
 
 
-model = ChatOpenAI()
+model = ChatOpenAI(model="gpt-4o")
+
+# Initialize MCP client # Define the connection type structures
+class StdioConnection(TypedDict):
+    command: str
+    args: List[str]
+    transport: Literal["stdio"]
+
+class SSEConnection(TypedDict):
+    url: str
+    transport: Literal["sse"]
+
+
+MCPConfig = Dict[str, Union[StdioConnection, SSEConnection]]
+
+DEFAULT_MCP_CONFIG: MCPConfig = {
+    "webscraping": {
+            "command": "python",
+            "args": ["-m", "mcp_server_fetch"],
+            "transport": "stdio",
+     }
+}
 
 
 def should_continue(state):
@@ -42,34 +65,71 @@ class FrontendTool(BaseTool):
         raise NodeInterrupt("This is a frontend tool call")
 
 
-def get_tool_defs(config):
+# Initialize MCP client outside of functions to maintain the connection
+mcp_client = None
+
+
+async def initialize_mcp_client():
+    """Initialize the MCP client if not already initialized"""
+    global mcp_client
+    if mcp_client is None:
+        mcp_client = MultiServerMCPClient(
+            {
+                "fetch": {
+                    "command": "python",
+                    "args": ["-m", "mcp_server_fetch"],
+                    "transport": "stdio",
+                }
+            }
+        )
+        await mcp_client.__aenter__()
+    return mcp_client
+
+
+async def get_tool_defs(config):
+    """Get tool definitions including MCP tools."""
     frontend_tools = [
         {"type": "function", "function": tool}
         for tool in config["configurable"]["frontend_tools"]
     ]
-    return tools + frontend_tools
+    
+    # Initialize MCP client if not already done
+    client = await initialize_mcp_client()
+    
+    # Get MCP tool definitions
+    mcp_tool_defs = client.get_tools() if client else []
+    
+    return tools + frontend_tools + mcp_tool_defs
 
 
-def get_tools(config):
+async def get_tools(config):
+    """Get tool instances including MCP tools."""
+    # Initialize MCP client if not already done
+    client = await initialize_mcp_client()
+    
     frontend_tools = [
         FrontendTool(tool.name) for tool in config["configurable"]["frontend_tools"]
     ]
-    return tools + frontend_tools
+    
+    # We return the tools without MCP tools because the MCP tools are handled separately
+    return tools + frontend_tools + client.get_tools()
 
 
 async def call_model(state, config):
     system = config["configurable"]["system"]
 
     messages = [SystemMessage(content=system)] + state["messages"]
-    model_with_tools = model.bind_tools(get_tool_defs(config))
+    tool_defs = await get_tool_defs(config)
+    model_with_tools = model.bind_tools(tool_defs)
     response = await model_with_tools.ainvoke(messages)
     # We return a list, because this will get added to the existing list
-    return {"messages": response}
+    return {"messages": [response]}
 
 
-async def run_tools(input, config, **kwargs):
-    tool_node = ToolNode(get_tools(config))
-    return await tool_node.ainvoke(input, config, **kwargs)
+async def run_tools(state, config, **kwargs):
+    """Process tool calls from the model's response"""
+    tool_node = ToolNode(await get_tools(config))
+    return await tool_node.ainvoke(state, config, **kwargs)
 
 
 # Define a new graph
@@ -77,14 +137,19 @@ workflow = StateGraph(AgentState)
 
 workflow.add_node("agent", call_model)
 workflow.add_node("tools", run_tools)
-
 workflow.set_entry_point("agent")
 workflow.add_conditional_edges(
     "agent",
     should_continue,
     ["tools", END],
 )
-
 workflow.add_edge("tools", "agent")
-
 assistant_ui_graph = workflow.compile()
+
+
+# Make sure to add proper cleanup for MCP client when your application shuts down
+async def cleanup():
+    global mcp_client
+    if mcp_client is not None:
+        await mcp_client.__aexit__(None, None, None)
+        mcp_client = None
