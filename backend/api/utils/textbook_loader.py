@@ -47,28 +47,16 @@ class TextbookLoader:
             chunk_overlap: Overlap between chunks to maintain context
             collection_name: Name of the MongoDB collection to store teaching materials
         """
-        self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
         self.collection_name = collection_name
         
-        # Initialize text splitter for chunking documents
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap
-        )
+        self.embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
         
-        # Initialize OpenAI embeddings
-        self.embeddings = OpenAIEmbeddings()
-        
-        # Ensure MongoDB connection
         if MongoDB.db is None:
             MongoDB.connect_db()
         
-        # Get MongoDB collection
         self.db = MongoDB.get_db()
         self.collection = self.db[collection_name]
         
-        # Initialize vector store
         self.vector_store = MongoDBAtlasVectorSearch(
             collection=self.collection,
             embedding=self.embeddings,
@@ -76,24 +64,22 @@ class TextbookLoader:
             relevance_score_fn="cosine",
         )
         
-        # Create vector search index if it doesn't exist
         self._ensure_vector_index()
     
     def _ensure_vector_index(self):
         """Ensure vector index exists for similarity search"""
         try:
-            # Check if collection exists
+
             if self.collection_name not in self.db.list_collection_names():
                 self.db.create_collection(self.collection_name)
                 logger.info(f"Created {self.collection_name} collection")
             
-            # Check if index exists
             indexes = list(self.collection.list_indexes())
             index_exists = any(index.get("name") == f"{self.collection_name}_index" for index in indexes)
             
             if not index_exists:
-                # Create vector search index
-                self.vector_store.create_vector_search_index(dimensions=1536)
+
+                self.vector_store.create_vector_search_index(dimensions=3072)
                 logger.info(f"Created vector index '{self.collection_name}_index' in MongoDB")
             else:
                 logger.info(f"Vector index '{self.collection_name}_index' already exists")
@@ -106,37 +92,41 @@ class TextbookLoader:
                 logger.error(f"Failed to create vector index: {e}")
                 raise
     
-    def load_textbook(self, 
-                     directory: str) -> List[Document]:
+    def load_textbook(self, directory: str, file_name: str) -> List[Document]:
         """
-        Load a textbook file using Langchain-unstructured, process it, and store in MongoDB.
+        Load and process a textbook from a directory.
         
         Args:
-            file_path: Path to the textbook file
-            metadata: Additional metadata to store with the document
-            strategy: Unstructured parsing strategy ('fast' or 'hi_res')
-            partition_via_api: Whether to use the Unstructured API for processing
+            directory: Path to the directory containing the textbook
             
         Returns:
-            List of Document objects that were processed and stored
+            List of processed Document objects
         """
         try:
-     
-            documents = []
-
-            # loader = UnstructuredLoader(
-            #         file_path = [directory],
-            #         api_key= ,
-            #         partition_via_api=True,
-            #         chunking_strategy="by_title",
-            #         strategy="fast",
-            # )
-
+            # Load the raw documents
+            loader = UnstructuredLoader(
+                file_path=[directory],
+                api_key=os.getenv("UNSTRUCTURED_API_KEY"),
+                partition_via_api=True,
+                chunking_strategy="by_title"
+            )
             
-            docs = loader.load()
+            raw_docs = loader.load()
+            
+            print (raw_docs[-1].page_content)
+            print (raw_docs[-1].metadata)
+            documents = [
+                Document(
+                    page_content=doc.page_content,
+                    metadata={"source": file_name}
+                ) for doc in raw_docs
+            ]
+            
 
-            print(docs[1].page_content[:100])
-            print(docs[1].metadata)
+            uuids = [str(uuid4()) for _ in range(len(documents))]
+            self.vector_store.add_documents(documents=documents, ids=uuids)
+            
+            return documents
 
         except Exception as e:
             logger.error(f"Error processing textbook: {e}")
@@ -189,12 +179,13 @@ if __name__ == "__main__":
     
     current_script_dir = os.path.dirname(os.path.abspath(__file__))
     base_dir = os.path.dirname(current_script_dir) # navigate to the parent directory
-    pdf_directory = os.path.join(base_dir, 'utils/pdfData') # navigate to the pdfData directory
+    pdf_directory = os.path.join(base_dir, 'utils/pdfData/teaching_at_its_best.pdf') # navigate to the pdfData directory
     
     
     # Process the textbook
     documents = loader.load_textbook(
         directory=pdf_directory,
+        file_name="teaching_at_its_best.pdf"
     )
     
     print(f"Processed {len(documents)} document chunks")
