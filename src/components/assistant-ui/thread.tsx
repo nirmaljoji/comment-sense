@@ -299,6 +299,13 @@ const ThreadWelcome: FC = () => {
           </p>
         </div>
         
+        {/* Warning message about data persistence */}
+        <div className="text-center p-2 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-md max-w-md">
+          <p className="text-xs text-red-600 dark:text-red-400">
+            <span className="font-semibold">Note:</span> All chats and uploaded files are deleted when you refresh or start a new chat. Please save important insights before closing.
+          </p>
+        </div>
+        
         {/* Example questions - just two as requested */}
         <div className="flex flex-col sm:flex-row w-full gap-3 max-w-md">
           <ThreadPrimitive.Suggestion
