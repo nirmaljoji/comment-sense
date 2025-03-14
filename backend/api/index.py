@@ -18,6 +18,19 @@ app = FastAPI()
 ENVIRONMENT = os.getenv("NODE_ENV", "development")
 BASE_URL = "https://comment-sense-qkru.onrender.com" if ENVIRONMENT == "production" else "http://localhost:8000"
 
+# CORS configuration - Must be added before any routes
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+        "https://comment-sense-delta.vercel.app",
+        BASE_URL,
+    ],
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
+
 # Health check endpoint
 @app.get("/health")
 async def health_check():
@@ -45,21 +58,12 @@ async def startup_db_client():
     MongoDB.connect_db()
     # Initialize the scheduler
     scheduler = BackgroundScheduler()
-    scheduler.add_job(sync_health_check, 'cron', minute='*/1')  
+    scheduler.add_job(sync_health_check, 'cron', minute='*/5')  # Changed to every 5 minutes
     scheduler.start()
 
 @app.on_event("shutdown")
 def shutdown_db_client():
     MongoDB.close_db()
-
-# CORS configuration - update with your frontend URL in production
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://comment-sense-delta.vercel.app"],  
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Add routes
 add_langgraph_route(app, assistant_ui_graph, "/api/chat")
