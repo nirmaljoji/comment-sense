@@ -5,30 +5,12 @@ from langchain_core.messages import SystemMessage
 from langgraph.errors import NodeInterrupt
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel
-from langchain_mcp_adapters.client import MultiServerMCPClient
 from .tools import tools
 from .state import AgentState
-import os
-from dotenv import load_dotenv
-from langfuse.callback import CallbackHandler
-# Load environment variables
-load_dotenv()
 
-model = ChatOpenAI(
-    api_key=os.getenv("OPENAI_API_KEY"),
-    model="gpt-4"
-)
 
-# Initialize langfuse handler with None values
-langfuse_handler = None
+model = ChatOpenAI()
 
-def initialize_langfuse_handler(user_id=None, session_id=None):
-    global langfuse_handler
-    langfuse_handler = CallbackHandler(
-        user_id=user_id,
-        session_id=session_id
-    )
-    return langfuse_handler
 
 def should_continue(state):
     messages = state["messages"]
@@ -60,86 +42,34 @@ class FrontendTool(BaseTool):
         raise NodeInterrupt("This is a frontend tool call")
 
 
-# Initialize MCP client outside of functions to maintain the connection
-mcp_client = None
-
-
-async def initialize_mcp_client():
-    """Initialize the MCP client if not already initialized"""
-    global mcp_client
-    if mcp_client is None:
-        mcp_client = MultiServerMCPClient(
-            {
-                "webscraping": {
-                    "command": "python",
-                    "args": ["-m", "mcp_server_fetch"],
-                    "transport": "stdio",
-                }
-            }
-        )
-        await mcp_client.__aenter__()
-    return mcp_client
-
-
 def get_tool_defs(config):
     frontend_tools = [
         {"type": "function", "function": tool}
         for tool in config["configurable"]["frontend_tools"]
     ]
-    
-    # Get MCP tool definitions - we'll use a synchronous approach here
-    # since tool_defs shouldn't be async
-    mcp_tool_defs = []
-    if mcp_client:
-        mcp_tool_defs = mcp_client.get_tools()
-    
-    return tools + frontend_tools + mcp_tool_defs
+    return tools + frontend_tools
 
 
-async def get_tools(config):
-    # Initialize MCP client if not already done
-    client = await initialize_mcp_client()
-    
+def get_tools(config):
     frontend_tools = [
         FrontendTool(tool.name) for tool in config["configurable"]["frontend_tools"]
     ]
-
-    # Get MCP tools
-    mcp_tools = client.get_tools() if client else []
-
-    return tools + frontend_tools + mcp_tools
+    return tools + frontend_tools
 
 
 async def call_model(state, config):
-    system = config.get("configurable", {}).get("system", "You are Comment Sense, an assistant to help analyze course evaluations")
-    print("Config:" + str(system))
-    # Make sure MCP client is initialized
-    await initialize_mcp_client()
-    
-    # Format the system message content as an object with type and text fields
-    system_message = SystemMessage(content=[{"type": "text", "text": system}])
-    messages = [system_message] + state["messages"]
+    system = config["configurable"]["system"]
+
+    messages = [SystemMessage(content=system)] + state["messages"]
     model_with_tools = model.bind_tools(get_tool_defs(config))
     response = await model_with_tools.ainvoke(messages)
     # We return a list, because this will get added to the existing list
-    return {"messages": [response]}  # Make sure this is a list
+    return {"messages": response}
 
 
-async def run_tools(state, config, **kwargs):
-    """Process tool calls from the model's response"""
-    messages = state["messages"]
-    last_message = messages[-1]
-    
-    # Debug logging to see what's happening
-    print(f"Tool calls: {last_message.tool_calls}")
-    
-    # Initialize tool_node with the tools
-    tool_node = ToolNode(await get_tools(config))
-    
-    # Pass the entire state to the tool_node
-    tool_results = await tool_node.ainvoke(state, config, **kwargs)
-    
-    return tool_results
+async def run_tools(input, config, **kwargs):
+    tool_node = ToolNode(get_tools(config))
+    return await tool_node.ainvoke(input, config, **kwargs)
 
 
 # Define a new graph
@@ -157,26 +87,4 @@ workflow.add_conditional_edges(
 
 workflow.add_edge("tools", "agent")
 
-def create_assistant_graph(config):
-    """Create a new instance of the assistant graph with proper configuration"""
-    # Get user_id and session_id from config
-    metadata = config.get("configurable", {}).get("metadata", {})
-    user_email = metadata.get("current_user", {})
-    session_id = metadata.get("langfuse_session_id", "default_session")
-    
-    # Initialize langfuse handler with the config values
-    handler = initialize_langfuse_handler(user_id=user_email, session_id=session_id)
-    
-    # Compile the graph with the handler
-    return workflow.compile().with_config({"callbacks": [handler]})
-
-# Export the graph creation function
-assistant_ui_graph = create_assistant_graph
-
-
-# Make sure to add proper cleanup for MCP client when your application shuts down
-async def cleanup():
-    global mcp_client
-    if mcp_client is not None:
-        await mcp_client.__aexit__(None, None, None)
-        mcp_client = None
+assistant_ui_graph = workflow.compile()

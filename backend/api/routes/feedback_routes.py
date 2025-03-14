@@ -22,7 +22,8 @@ async def submit_feedback(feedback: FeedbackModel , current_user: UserInDB = Dep
     
     traces = langfuse_client.fetch_traces(
         limit=1,
-        order_by="timestamp.desc"  # Get the most recent trace
+        user_id=current_user.email,
+        order_by="timestamp.desc",  # Get the most recent trace
     )
     
     logger.info(f"Found latest trace: {traces.data[0].id}")

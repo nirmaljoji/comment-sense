@@ -8,19 +8,14 @@ from langchain_core.messages import (
     SystemMessage,
     BaseMessage,
 )
-from fastapi import FastAPI, Header, Depends, HTTPException, status
+from fastapi import FastAPI, Header
 from pydantic import BaseModel
 from typing import List, Literal, Union, Optional, Any
-from dotenv import load_dotenv
-from langfuse.callback import CallbackHandler
-from langfuse.client import Langfuse
 from ..utils.deps import get_current_user
-from pymongo import MongoClient
-from bson.objectid import ObjectId
+from ..models.user import UserInDB
+from fastapi import Depends, HTTPException, status
 from ..database.mongodb import MongoDB
-load_dotenv(".env")
-
-
+from bson import ObjectId
 
 class LanguageModelTextPart(BaseModel):
     type: Literal["text"]
@@ -121,7 +116,6 @@ def convert_to_langchain_messages(
                 p for p in msg.content if isinstance(p, LanguageModelTextPart)
             ]
             text_content = " ".join(p.text for p in text_parts)
-
             tool_calls = [
                 {
                     "id": p.toolCallId,
@@ -141,7 +135,7 @@ def convert_to_langchain_messages(
                         tool_call_id=tool_result.toolCallId,
                     )
                 )
-    print(result)
+
     return result
 
 
@@ -157,59 +151,58 @@ class ChatRequest(BaseModel):
     messages: List[LanguageModelV1Message]
 
 
-def add_langgraph_route(app: FastAPI, graph, path: str):
-
+def add_langgraph_route(app: FastAPI, graph, path: str, current_user: UserInDB = Depends(get_current_user)):
+   
     SYSTEM_MESSAGE = """
-    # Professor's Teaching Assistant AI Agent
+        # Professor's Teaching Assistant AI Agent
 
-You are an expert teaching assistant AI designed to help professors analyze course evaluations and improve their teaching methods. Your primary goal is to provide actionable insights and research-backed recommendations that enhance teaching effectiveness and student learning outcomes.
+    You are an expert teaching assistant AI designed to help professors analyze course evaluations and improve their teaching methods. Your primary goal is to provide actionable insights and research-backed recommendations that enhance teaching effectiveness and student learning outcomes.
 
-## Your Capabilities
+    ## Your Capabilities
 
-1. **get_evaluations_context**: You can analyze course evaluation data to identify patterns, strengths, and opportunities for improvement.
+    1. **get_evaluations_context**: You can analyze course evaluation data to identify patterns, strengths, and opportunities for improvement.
 
-2. **get_teaching_material_context**: You have access to "Teaching at Its Best," a comprehensive textbook on effective teaching practices in higher education, which you can reference to provide targeted advice. Do not use information from anywhere else.
+    2. **get_teaching_material_context**: You have access to "Teaching at Its Best," a comprehensive textbook on effective teaching practices in higher education, which you can reference to provide targeted advice. Do not use information from anywhere else.
 
-3. **fetch**: Only use this tool if the user has provided with a URL in the prompt.
+    3. **fetch**: Only use this tool if the user has provided with a URL in the prompt.
 
-## How You Operate
+    ## How You Operate
 
-When a professor shares course evaluation data with you:
+    When a professor shares course evaluation data with you:
 
-1. If the prompt is about the course evaluations then analyze the evaluations carefully to identify key themes, strengths, and areas for improvement.
+    1. If the prompt is about the course evaluations then analyze the evaluations carefully to identify key themes, strengths, and areas for improvement.
 
-2. For each area that needs improvement, retrieve relevant guidance from get_teaching_material_context tool to provide research-backed recommendations.
+    2. For each area that needs improvement, retrieve relevant guidance from get_teaching_material_context tool to provide research-backed recommendations.
 
-3. When appropriate, supplement this information with fetch tool.
+    3. When appropriate, supplement this information with fetch tool.
 
-4. Present your insights in a clear, organized manner with specific, actionable steps the professor can take to improve.
+    4. Present your insights in a clear, organized manner with specific, actionable steps the professor can take to improve.
 
-5. Maintain a supportive, constructive tone that acknowledges teaching strengths while suggesting improvements.
+    5. Maintain a supportive, constructive tone that acknowledges teaching strengths while suggesting improvements.
 
-## Interaction Guidelines
+    ## Interaction Guidelines
 
-- Always respond with empathy and understanding of the challenges professors face.
-- Frame feedback positively as opportunities for growth rather than criticisms.
-- Provide specific, concrete examples when suggesting teaching strategies.
-- When making recommendations, explain the research or principles behind them.
-- Prioritize quality over quantity in your recommendations—focus on the most impactful changes first.
-- Adjust your recommendations based on the professor's teaching context (discipline, class size, level, format, etc.).
+    - Always respond with empathy and understanding of the challenges professors face.
+    - Frame feedback positively as opportunities for growth rather than criticisms.
+    - Provide specific, concrete examples when suggesting teaching strategies.
+    - When making recommendations, explain the research or principles behind them.
+    - Prioritize quality over quantity in your recommendations—focus on the most impactful changes first.
+    - Adjust your recommendations based on the professor's teaching context (discipline, class size, level, format, etc.).
 
-## Special Instructions
+    ## Special Instructions
 
-- When analyzing evaluations, look for both explicit feedback and implied concerns in student comments.
-- Use only get_teaching_material_context tool for recommending new teaching strategies and tips
-- For sensitive issues (like very negative feedback), balance honesty with constructiveness and offer particularly supportive guidance.
+    - When analyzing evaluations, look for both explicit feedback and implied concerns in student comments.
+    - Use only get_teaching_material_context tool for recommending new teaching strategies and tips
+    - For sensitive issues (like very negative feedback), balance honesty with constructiveness and offer particularly supportive guidance.
 
-You exist to help professors become more effective educators. Your ultimate measure of success is improved teaching practices that lead to better student learning outcomes.
-    
-    """
-
-
-    async def chat_completions(request: ChatRequest, x_chat_id: Optional[str] = Header(None, alias="X-Chat-ID"), current_user: dict = Depends(get_current_user)):
-        print(f"Current chat ID: {x_chat_id}")  # Print the chat ID
+    You exist to help professors become more effective educators. Your ultimate measure of success is improved teaching practices that lead to better student learning outcomes.
         
-        # Check and update request count
+    """
+   
+    async def chat_completions(request: ChatRequest, x_chat_id: Optional[str] = Header(None, alias="X-Chat-ID"), current_user: dict = Depends(get_current_user)):
+        inputs = convert_to_langchain_messages(request.messages)
+
+                # Check and update request count
         db = MongoDB.get_db()
         user = db.users.find_one({"_id": ObjectId(current_user.id)})
         
@@ -232,36 +225,30 @@ You exist to help professors become more effective educators. Your ultimate meas
         async def run(controller: RunController):
             tool_calls = {}
             tool_calls_by_idx = {}
-            pending_tool_messages = {}  # Store tool messages that arrive early
 
-            # Create the graph instance with the current configuration
-            config = {
-                "configurable": {
-                    "system": request.system,
-                    "frontend_tools": request.tools,
-                    "metadata": {
-                        "langfuse_session_id": x_chat_id,
-                        "current_user": current_user.email,
-                        "current_id": current_user.id
-                    }
-                }
-            }
-            graph_instance = graph(config)
-
-            async for msg, metadata in graph_instance.astream(
+            async for msg, metadata in graph.astream(
                 {"messages": all_messages},
-                config,
-                stream_mode="messages"
+                {
+                    "configurable": {
+                        "system": request.system,
+                        "frontend_tools": request.tools,
+                        "metadata": {
+                            "langfuse_session_id": x_chat_id,
+                            "current_user": current_user.email,
+                            "current_id": current_user.id
+                        }
+                    }
+                },
+                stream_mode="messages",
             ):
                 if isinstance(msg, ToolMessage):
-                    if msg.tool_call_id in tool_calls:
-                        # Process tool message immediately if tool call is registered
-                        tool_controller = tool_calls[msg.tool_call_id]
-                        tool_controller.set_result(msg.content)
-                    else:
-                        # Queue tool message for later processing
-                        print(f"Queueing tool message for tool call {msg.tool_call_id}")
-                        pending_tool_messages[msg.tool_call_id] = msg.content
+                    tool_controller = tool_calls.get(msg.tool_call_id)
+                    if tool_controller is None:
+                        # The MCP tool may send a ToolMessage before its call is registered.
+                        # Register a fallback tool call using "MCP" (or an appropriate tool name) as a default.
+                        tool_controller = await controller.add_tool_call("MCP", msg.tool_call_id)
+                        tool_calls[msg.tool_call_id] = tool_controller
+                    tool_controller.set_result(msg.content)
 
                 if isinstance(msg, AIMessageChunk) or isinstance(msg, AIMessage):
                     if msg.content:
@@ -269,18 +256,11 @@ You exist to help professors become more effective educators. Your ultimate meas
 
                     for chunk in msg.tool_call_chunks:
                         if not chunk["index"] in tool_calls_by_idx:
-                            print(f"Registering new tool call: {chunk['id']} for tool {chunk['name']}")
                             tool_controller = await controller.add_tool_call(
                                 chunk["name"], chunk["id"]
                             )
                             tool_calls_by_idx[chunk["index"]] = tool_controller
                             tool_calls[chunk["id"]] = tool_controller
-                            
-                            # Process any pending tool messages for this tool call
-                            if chunk["id"] in pending_tool_messages:
-                                print(f"Processing queued tool message for {chunk['id']}")
-                                tool_controller.set_result(pending_tool_messages[chunk["id"]])
-                                del pending_tool_messages[chunk["id"]]
                         else:
                             tool_controller = tool_calls_by_idx[chunk["index"]]
 
