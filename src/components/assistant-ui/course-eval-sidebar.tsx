@@ -132,41 +132,43 @@ export function CourseEvalSidebar({ files, onDeleteFile, onFileUploaded }: Cours
           {files.map((file) => (
             <div
               key={file.id}
-              className="group flex items-center justify-between rounded-lg p-2 hover:bg-gray-100 transition-colors"
+              className="group grid grid-cols-[1fr_auto] gap-2 items-center rounded-lg p-2 hover:bg-gray-100 transition-colors"
             >
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-[#CC0000]" />
-                <span className="text-sm text-gray-700">{file.name}</span>
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="h-4 w-4 text-[#CC0000] flex-shrink-0" />
+                <span className="text-sm text-gray-700 truncate">{file.name}</span>
               </div>
               
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 opacity-0 group-hover:opacity-100"
-                  >
-                    <Trash2 className="h-4 w-4 text-gray-500 hover:text-[#CC0000]" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete Evaluation File</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Are you sure you want to delete "{file.name}"? This action cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      className="bg-[#CC0000] hover:bg-[#990000]"
-                      onClick={() => onDeleteFile(file.id)}
+              <div className="flex-shrink-0">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 opacity-70 hover:opacity-100"
                     >
-                      Delete
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                      <Trash2 className="h-4 w-4 text-gray-500 hover:text-[#CC0000]" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete Evaluation File</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete "{file.name}"? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        className="bg-[#CC0000] hover:bg-[#990000]"
+                        onClick={() => onDeleteFile(file.id)}
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           ))}
         </div>
