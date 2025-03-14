@@ -1,9 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { Button } from './button';
 import { ThreeDText } from './3d-text';
+import LearnToUseDialog from '../assistant-ui/learn-to-use-dialog';
+import VideoDemoDialog from './video-demo-dialog';
 
 export function HeroSection() {
+  const [isLearnDialogOpen, setIsLearnDialogOpen] = useState(false);
+  const [isVideoDemoOpen, setIsVideoDemoOpen] = useState(false);
+
   return (
     <div className="relative overflow-hidden">
       <div className="flex flex-col justify-center space-y-8">
@@ -29,13 +34,28 @@ export function HeroSection() {
         
         {/* Call to action buttons */}
         <div className="flex flex-col gap-4 sm:flex-row">
-          <Button size="lg" className="bg-red-600 hover:bg-red-700">
+          <Button size="lg" className="bg-red-600 hover:bg-red-700" onClick={() => setIsLearnDialogOpen(true)}>
             Learn More
           </Button>
-          <Button size="lg" variant="outline" className="border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20">
+          <Button 
+            size="lg" 
+            variant="outline" 
+            className="border-red-600 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+            onClick={() => setIsVideoDemoOpen(true)}
+          >
             Watch Demo
           </Button>
         </div>
+        
+        {/* Dialogs */}
+        <LearnToUseDialog 
+          open={isLearnDialogOpen} 
+          onOpenChange={setIsLearnDialogOpen}
+        />
+        <VideoDemoDialog
+          open={isVideoDemoOpen}
+          onOpenChange={setIsVideoDemoOpen}
+        />
         
         {/* Spacer div to maintain spacing after removing trust indicators */}
         <div className="mt-8"></div>
