@@ -21,7 +21,7 @@ def shutdown_db_client():
 # CORS configuration - update with your frontend URL in production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your frontend URL(s)
+    allow_origins=["http://localhost:3000", "https://comment-sense-delta.vercel.app"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
