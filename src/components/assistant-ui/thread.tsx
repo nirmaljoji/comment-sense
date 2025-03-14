@@ -18,6 +18,8 @@ import {
   ThumbsUpIcon,
   ThumbsDownIcon,
   StarIcon,
+  PlusCircleIcon,
+  HelpCircleIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -26,6 +28,12 @@ import { Button } from "@/components/ui/button";
 import { MarkdownText } from "@/components/assistant-ui/markdown-text";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -36,8 +44,11 @@ import {
   DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-
+import { Textarea } from "../ui/textarea";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
+import LearnToUseDialog from "./learn-to-use-dialog";
+import NewChatDialog from "./new-chat-dialog";
+import { getApiUrl } from '@/lib/utils'
 /* -------------------------------------------------------------------------
    useAutoScroll hook – continuously drives the scroll position using
    requestAnimationFrame and a small "bottom offset" so that the currently
@@ -207,22 +218,57 @@ export const Thread: FC = () => {
 };
 
 /* -------------------------------------------------------------------------
-   Composer Component – unchanged except for the onSend prop
+   Composer Component – with added New Chat and Learn to Use options
 -------------------------------------------------------------------------- */
 const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
+  const [newChatDialogOpen, setNewChatDialogOpen] = useState(false);
+  const [learnDialogOpen, setLearnDialogOpen] = useState(false);
+
   return (
-    <ComposerPrimitive.Root
-      className="focus-within:border-ring/20 flex w-full flex-wrap items-end rounded-lg border bg-inherit px-2.5 shadow-sm transition-colors ease-in"
-      onSubmit={onSend}
-    >
-      <ComposerPrimitive.Input
-        rows={1}
-        autoFocus
-        placeholder="Write a message..."
-        className="composer-input placeholder:text-muted-foreground max-h-40 flex-grow resize-none border-none bg-transparent px-2 py-4 text-sm outline-none focus:ring-0 disabled:cursor-not-allowed"
+    <>
+      <div className="flex w-full items-center gap-2">
+        <div className="flex items-center gap-3 mr-4">
+          <LargeIconButton
+            tooltip="New Chat"
+            onClick={() => setNewChatDialogOpen(true)}
+          >
+            <PlusCircleIcon className="h-1 w-1 size-5" />
+          </LargeIconButton>
+          
+          <LargeIconButton
+            tooltip="Learn to Use"
+            onClick={() => setLearnDialogOpen(true)}
+          >
+            <HelpCircleIcon className="h-1 w-1 size-5" />
+          </LargeIconButton>
+        </div>
+        
+        <ComposerPrimitive.Root
+          className="focus-within:border-ring/20 flex w-full flex-wrap items-end rounded-lg border bg-inherit px-2.5 shadow-sm transition-colors ease-in"
+          onSubmit={onSend}
+        >
+          <ComposerPrimitive.Input
+            rows={1}
+            autoFocus
+            placeholder="Write a message..."
+            className="composer-input placeholder:text-muted-foreground max-h-40 flex-grow resize-none border-none bg-transparent px-2 py-4 text-sm outline-none focus:ring-0 disabled:cursor-not-allowed"
+          />
+          <ComposerAction />
+        </ComposerPrimitive.Root>
+      </div>
+
+      {/* New Chat Confirmation Dialog */}
+      <NewChatDialog 
+        open={newChatDialogOpen} 
+        onOpenChange={setNewChatDialogOpen} 
       />
-      <ComposerAction />
-    </ComposerPrimitive.Root>
+
+      {/* Learn to Use Dialog */}
+      <LearnToUseDialog 
+        open={learnDialogOpen} 
+        onOpenChange={setLearnDialogOpen} 
+      />
+    </>
   );
 };
 
@@ -360,18 +406,39 @@ const AssistantActionBar: FC = () => {
   const [rating, setRating] = useState(0);
   const [feedbackText, setFeedbackText] = useState('');
 
-  const handleFeedbackSubmit = () => {
-    // Here you would typically send the feedback data to your backend
-    console.log({
-      feedbackType,
-      rating,
-      feedbackText
-    });
-    
-    // Reset the form
-    setRating(0);
-    setFeedbackText('');
-    setFeedbackDialogOpen(false);
+  const handleFeedbackSubmit = async () => {
+    const token = localStorage.getItem('token');
+    const API_URL = getApiUrl()
+    try {
+      // Send the feedback data to the backend
+      const response = await fetch(`${API_URL}/api/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          feedback_type: feedbackType,
+          rating,
+          feedback_text: feedbackText,
+          // You can add user_id and message_id here if available
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to submit feedback');
+      }
+      
+      console.log('Feedback submitted successfully');
+      
+      // Reset the form
+      setRating(0);
+      setFeedbackText('');
+      setFeedbackDialogOpen(false);
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      // You could show an error message to the user here
+    }
   };
 
   const openFeedbackDialog = (type: 'positive' | 'negative') => {
@@ -509,5 +576,32 @@ const CircleStopIcon = () => {
     >
       <rect width="10" height="10" x="3" y="3" rx="2" />
     </svg>
+  );
+};
+
+/* -------------------------------------------------------------------------
+   Custom Large Icon Button Component
+-------------------------------------------------------------------------- */
+const LargeIconButton: FC<{
+  tooltip: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}> = ({ tooltip, onClick, children }) => {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            className="size-14 p-0 text-muted-foreground hover:text-foreground [&_svg]:!size-10 [&_svg]:!w-7 [&_svg]:!h-7"
+            onClick={onClick}
+          >
+            {children}
+            <span className="sr-only">{tooltip}</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{tooltip}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };

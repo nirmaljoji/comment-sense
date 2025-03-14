@@ -124,13 +124,13 @@ class TextbookLoader:
      
             documents = []
 
-            loader = UnstructuredLoader(
-                    file_path = [directory],
-                    api_key= ,
-                    partition_via_api=True,
-                    chunking_strategy="by_title",
-                    strategy="fast",
-            )
+            # loader = UnstructuredLoader(
+            #         file_path = [directory],
+            #         api_key= ,
+            #         partition_via_api=True,
+            #         chunking_strategy="by_title",
+            #         strategy="fast",
+            # )
 
             
             docs = loader.load()
