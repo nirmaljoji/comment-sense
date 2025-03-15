@@ -11,8 +11,25 @@ from .state import AgentState
 from langchain_mcp_adapters.client import MultiServerMCPClient
 import os
 import sys
-
+import importlib
 model = ChatOpenAI(model="gpt-4o")
+
+
+# Add this to your initialization code
+try:
+    # Try to import the module
+    spec = importlib.util.find_spec("mcp_server_fetch")
+    if spec is None:
+        print("ERROR: mcp_server_fetch module not found in Python path")
+        # List installed packages to help debug
+        import subprocess
+        result = subprocess.run(["/opt/render/project/src/.venv/bin/pip", "list"], 
+                               capture_output=True, text=True)
+        print(f"Installed packages:\n{result.stdout}")
+    else:
+        print(f"mcp_server_fetch module found at: {spec.origin}")
+except Exception as e:
+    print(f"Error checking for module: {str(e)}")
 
 
 # Get the path to the Python interpreter in the current environment
