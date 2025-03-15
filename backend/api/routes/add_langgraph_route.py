@@ -17,6 +17,10 @@ from fastapi import Depends, HTTPException, status
 from ..database.mongodb import MongoDB
 from bson import ObjectId
 from langfuse.callback import CallbackHandler
+from langfuse.decorators import observe
+from langfuse import Langfuse
+ 
+langfuse = Langfuse()
 
 class LanguageModelTextPart(BaseModel):
     type: Literal["text"]
@@ -152,7 +156,6 @@ class ChatRequest(BaseModel):
     tools: Optional[List[FrontendToolCall]] = []
     messages: List[LanguageModelV1Message]
 
-
 def add_langgraph_route(app: FastAPI, graph, path: str, current_user: UserInDB = Depends(get_current_user)):
    
     SYSTEM_MESSAGE = """
@@ -203,11 +206,7 @@ def add_langgraph_route(app: FastAPI, graph, path: str, current_user: UserInDB =
    
     async def chat_completions(request: ChatRequest, x_chat_id: Optional[str] = Header(None, alias="X-Chat-ID"), current_user: dict = Depends(get_current_user)):
         inputs = convert_to_langchain_messages(request.messages)
-        langfuse_handler = CallbackHandler(
-            user_id=current_user.email,
-            session_id=x_chat_id
-        )
-                # Check and update request count
+        # Check and update request count
         db = MongoDB.get_db()
         user = db.users.find_one({"_id": ObjectId(current_user.id)})
         
@@ -227,9 +226,24 @@ def add_langgraph_route(app: FastAPI, graph, path: str, current_user: UserInDB =
         system_msg = SystemMessage(content=SYSTEM_MESSAGE)
         all_messages = [system_msg] + inputs
 
+        print("inputs")
+        print(inputs)
+
+        trace = langfuse.trace(
+            user_id = current_user.email,
+            session_id = x_chat_id
+        )
+        trace.update(
+            input = inputs[-1].content[0]['text'],
+        )
+
+        accumulated_content = "" 
+        tool_calls = {} # Initialize an empty string to accumulate message content
+
         async def run(controller: RunController):
             tool_calls = {}
             tool_calls_by_idx = {}
+            nonlocal accumulated_content  # Use nonlocal to modify the outer variable
 
             async for msg, metadata in graph.astream(
                 {"messages": all_messages},
@@ -242,8 +256,7 @@ def add_langgraph_route(app: FastAPI, graph, path: str, current_user: UserInDB =
                             "current_user": current_user.email,
                             "current_id": current_user.id
                         },
-                    },
-                     "callbacks": [langfuse_handler]
+                    }
                 },
                 stream_mode="messages"
             ):
@@ -254,10 +267,14 @@ def add_langgraph_route(app: FastAPI, graph, path: str, current_user: UserInDB =
                         # Register a fallback tool call using "MCP" (or an appropriate tool name) as a default.
                         tool_controller = await controller.add_tool_call("MCP", msg.tool_call_id)
                         tool_calls[msg.tool_call_id] = tool_controller
+                    
+                    # Accumulate tool message content
                     tool_controller.set_result(msg.content)
 
                 if isinstance(msg, AIMessageChunk) or isinstance(msg, AIMessage):
                     if msg.content:
+                        # Accumulate AI message content
+                        accumulated_content += msg.content
                         controller.append_text(msg.content)
 
                     for chunk in msg.tool_call_chunks:
@@ -271,6 +288,11 @@ def add_langgraph_route(app: FastAPI, graph, path: str, current_user: UserInDB =
                             tool_controller = tool_calls_by_idx[chunk["index"]]
 
                         tool_controller.append_args_text(chunk["args"])
+            
+            # After processing all message chunks, update the trace with the complete accumulated content
+            trace.update(
+                output = accumulated_content
+            )
 
         return DataStreamResponse(create_run(run))
 
