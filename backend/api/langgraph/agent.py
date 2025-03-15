@@ -9,10 +9,19 @@ from pydantic import BaseModel
 from .tools import tools
 from .state import AgentState
 from langchain_mcp_adapters.client import MultiServerMCPClient
-
+import os
+import sys
 
 model = ChatOpenAI(model="gpt-4o")
 
+
+# Get the path to the Python interpreter in the current environment
+if os.environ.get("NODE_ENV") == "production":
+    # On Render
+    python_path = "/opt/render/project/src/.venv/bin/python"
+else:
+    # Local development - use current Python interpreter
+    python_path = sys.executable
 # Initialize MCP client # Define the connection type structures
 class StdioConnection(TypedDict):
     command: str
