@@ -17,6 +17,10 @@ model = ChatOpenAI(model="gpt-4o")
 
 # Add this to your initialization code
 try:
+    # Print Python version and location
+    print(f"Python version: {sys.version}")
+    print(f"Python executable: {sys.executable}")
+    
     # Try to import the module
     spec = importlib.util.find_spec("mcp_server_fetch")
     if spec is None:
@@ -28,6 +32,11 @@ try:
         print(f"Installed packages:\n{result.stdout}")
     else:
         print(f"mcp_server_fetch module found at: {spec.origin}")
+        
+    # Print the Python path
+    print(f"Python sys.path:")
+    for path in sys.path:
+        print(f"  - {path}")
 except Exception as e:
     print(f"Error checking for module: {str(e)}")
 
