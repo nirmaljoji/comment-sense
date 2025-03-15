@@ -36,7 +36,7 @@ app = FastAPI(lifespan=lifespan)
 
 
 # Get environment
-ENVIRONMENT = os.getenv("NODE_ENV", "development")
+ENVIRONMENT = os.getenv("DEPLOYMENT_ENV", "development")
 BASE_URL = "https://comment-sense-1.onrender.com" if ENVIRONMENT == "production" else "http://localhost:8000"
 
 # CORS configuration - Must be added before any routes
