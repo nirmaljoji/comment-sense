@@ -44,31 +44,10 @@ except Exception as e:
 # Get the path to the Python interpreter in the current environment
 if os.environ.get("NODE_ENV") == "production":
     # On Render
-    python_path = "/opt/render/project/src/.venv/bin/python"
+    python_path = "/opt/render/project/src/.venv/bin/python3.11"
 else:
     # Local development - use current Python interpreter
     python_path = sys.executable
-# Initialize MCP client # Define the connection type structures
-class StdioConnection(TypedDict):
-    command: str
-    args: List[str]
-    transport: Literal["stdio"]
-
-class SSEConnection(TypedDict):
-    url: str
-    transport: Literal["sse"]
-
-
-MCPConfig = Dict[str, Union[StdioConnection, SSEConnection]]
-
-DEFAULT_MCP_CONFIG: MCPConfig = {
-    "webscraping": {
-            "command": "python",
-            "args": ["-m", "mcp_server_fetch"],
-            "transport": "stdio",
-     }
-}
-
 
 def should_continue(state):
     messages = state["messages"]
@@ -111,7 +90,7 @@ async def initialize_mcp_client():
         mcp_client = MultiServerMCPClient(
             {
                 "fetch": {
-                    "command": "python",
+                    "command": python_path,
                     "args": ["-m", "mcp_server_fetch"],
                     "transport": "stdio",
                 }
