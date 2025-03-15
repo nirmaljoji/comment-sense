@@ -90,7 +90,7 @@ async def initialize_mcp_client():
         mcp_client = MultiServerMCPClient(
             {
                 "fetch": {
-                    "command": python_path,
+                    "command": "python",
                     "args": ["-m", "mcp_server_fetch"],
                     "transport": "stdio",
                 }

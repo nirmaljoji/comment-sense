@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "fastapi-dev": "cd backend && poetry install && python3 -B -m uvicorn api.index:app --reload",
-    "dev": "concurrently \"npm run next-dev\" \"npm run fastapi-dev\"",
+    "dev": "concurrently \"npm run next-dev\"",
     "next-dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
