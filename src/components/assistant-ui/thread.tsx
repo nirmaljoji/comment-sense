@@ -49,6 +49,7 @@ import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import LearnToUseDialog from "./learn-to-use-dialog";
 import NewChatDialog from "./new-chat-dialog";
 import { getApiUrl } from '@/lib/utils'
+import { ModelSelector } from "./model-selector";
 /* -------------------------------------------------------------------------
    useAutoScroll hook – continuously drives the scroll position using
    requestAnimationFrame and a small "bottom offset" so that the currently
@@ -153,8 +154,12 @@ export const Thread: FC = () => {
         height: "100%",
       }}
     >
+
+       {/* Add the ModelSelector component at the top */}
+
       {/* Messages Area */}
       <div className="flex flex-col flex-1 overflow-hidden">
+
         <ScrollAreaPrimitive.Root className="relative flex-1 h-0">
           <ScrollAreaPrimitive.Viewport
             ref={scrollViewportRef}
@@ -162,6 +167,7 @@ export const Thread: FC = () => {
             className="absolute inset-0 overflow-y-auto"
           >
             <ThreadPrimitive.Viewport className="flex h-full flex-col items-center bg-inherit px-6 pt-8">
+            <ModelSelector  />
               <ThreadWelcome />
               <ThreadPrimitive.Messages
                 components={{
