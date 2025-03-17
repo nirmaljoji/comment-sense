@@ -12,7 +12,7 @@ interface VideoDemoDialogProps {
 }
 
 // Replace VIDEO_ID with your actual YouTube video ID when ready
-const VIDEO_ID = ''; // Placeholder video ID
+const VIDEO_ID = 'rH7JrXC797g'; // Placeholder video ID
 
 const VideoDemoDialog: React.FC<VideoDemoDialogProps> = ({ open, onOpenChange }) => {
   return (
