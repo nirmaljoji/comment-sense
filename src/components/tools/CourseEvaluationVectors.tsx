@@ -51,7 +51,7 @@ CourseEvaluationVectorsToolResult
         <div className="flex items-center gap-2 px-4">
           <span className="text-green-600">✓</span>
           <p className="">
-            Used tool: <b>Retrieve Evaluations Context</b>
+            Looking into your <b>course evaluations</b> ...
           </p>
           <div className="flex-grow" />
           <button 

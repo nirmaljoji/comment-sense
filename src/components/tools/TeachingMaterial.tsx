@@ -51,7 +51,7 @@ export const TeachingMaterial = makeAssistantToolUI<
         <div className="flex items-center gap-2 px-4">
           <span className="text-blue-600">✓</span>
           <p className="">
-            Used tool: <b>Retrieve Teaching Material</b>
+            Using our <b>teaching expert</b> ...
           </p>
           <div className="flex-grow" />
           <button 
