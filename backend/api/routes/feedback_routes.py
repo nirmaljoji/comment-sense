@@ -4,6 +4,7 @@ from ..utils.logger import logger
 from langfuse import Langfuse
 from ..models.user import UserInDB
 from ..utils.deps import get_current_user
+import uuid
 router = APIRouter()
 
 
@@ -26,11 +27,26 @@ async def submit_feedback(feedback: FeedbackModel , current_user: UserInDB = Dep
         order_by="timestamp.desc",  # Get the most recent trace
     )
     
-    logger.info(f"Found latest trace: {traces.data[0].id}")
+    trace_id = None
+    
+    if traces.data and len(traces.data) > 0:
+        # User has an existing trace
+        trace_id = traces.data[0].id
+        logger.info(f"Found latest trace: {trace_id}")
+    else:
+        # User does not have a trace, create a new one
+        session_id = str(uuid.uuid4())
+        trace = langfuse_client.trace(
+            name="feedback_standalone",
+            user_id=current_user.email,
+            session_id=session_id
+        )
+        trace_id = trace.id
+        logger.info(f"Created new trace: {trace_id}")
 
     langfuse_client.score(
         name="feedback",
-        trace_id=traces.data[0].id,
+        trace_id=trace_id,
         value=feedback.rating,  
         comment=feedback.feedback_text,
     )

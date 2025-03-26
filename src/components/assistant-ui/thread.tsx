@@ -20,6 +20,10 @@ import {
   StarIcon,
   PlusCircleIcon,
   HelpCircleIcon,
+  BarChart2Icon,
+  EyeIcon,
+  EyeOffIcon,
+  ShieldIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -223,6 +227,74 @@ export const Thread: FC = () => {
 const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
   const [newChatDialogOpen, setNewChatDialogOpen] = useState(false);
   const [learnDialogOpen, setLearnDialogOpen] = useState(false);
+  const [loggingDialogOpen, setLoggingDialogOpen] = useState(false);
+  const [loggingEnabled, setLoggingEnabled] = useState(false);
+  const [isLoadingLoggingStatus, setIsLoadingLoggingStatus] = useState(true);
+  const [updateLoggingError, setUpdateLoggingError] = useState<string | null>(null);
+
+  // Fetch the current logging status when component mounts
+  useEffect(() => {
+    const fetchLoggingStatus = async () => {
+      setIsLoadingLoggingStatus(true);
+      setUpdateLoggingError(null);
+      const token = localStorage.getItem('token');
+      const API_URL = getApiUrl();
+      
+      try {
+        const response = await fetch(`${API_URL}/api/get_logging`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch logging status');
+        }
+        
+        const data = await response.json();
+        setLoggingEnabled(data.logging_enabled);
+      } catch (error) {
+        console.error('Error fetching logging status:', error);
+        // Fallback to default (false) if API fails
+        setLoggingEnabled(false);
+      } finally {
+        setIsLoadingLoggingStatus(false);
+      }
+    };
+    
+    fetchLoggingStatus();
+  }, []);
+
+  const toggleLogging = async (newValue: boolean) => {
+    setUpdateLoggingError(null);
+    const token = localStorage.getItem('token');
+    const API_URL = getApiUrl();
+    
+    try {
+      const response = await fetch(`${API_URL}/api/update_logging`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          logging_enabled: newValue
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to update logging preference');
+      }
+      
+      setLoggingEnabled(newValue);
+      setLoggingDialogOpen(false);
+    } catch (error) {
+      console.error('Error updating logging status:', error);
+      setUpdateLoggingError('Failed to update logging preference. Please try again.');
+    }
+  };
 
   return (
     <>
@@ -241,6 +313,24 @@ const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
           >
             <HelpCircleIcon className="h-1 w-1 size-5" />
           </LargeIconButton>
+          
+          <LargeIconButton
+            tooltip={`Logging: ${isLoadingLoggingStatus ? 'Loading...' : (loggingEnabled ? 'Enabled' : 'Disabled')}`}
+            onClick={() => setLoggingDialogOpen(true)}
+          >
+            <div className="relative">
+              <BarChart2Icon className="h-1 w-1 size-5" />
+              <div className="absolute -top-1.5 -right-1.5 size-3 rounded-full flex items-center justify-center">
+                {isLoadingLoggingStatus ? (
+                  <div className="size-3 rounded-full border-2 border-t-transparent border-blue-500 animate-spin" />
+                ) : loggingEnabled ? (
+                  <EyeIcon className="size-3 text-green-500" />
+                ) : (
+                  <EyeOffIcon className="size-3 text-red-500" />
+                )}
+              </div>
+            </div>
+          </LargeIconButton>
         </div>
         
         <ComposerPrimitive.Root
@@ -256,6 +346,76 @@ const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
           <ComposerAction />
         </ComposerPrimitive.Root>
       </div>
+
+      {/* Logging Preferences Dialog */}
+      <Dialog open={loggingDialogOpen} onOpenChange={setLoggingDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldIcon className="size-5 text-primary" />
+              Logging Preferences
+            </DialogTitle>
+            <DialogDescription>
+              Control how your conversation data is collected and used.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 space-y-4">
+            {isLoadingLoggingStatus ? (
+              <div className="flex justify-center py-6">
+                <div className="size-8 rounded-full border-4 border-t-transparent border-primary animate-spin" />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 p-4 rounded-lg border bg-muted/50">
+                <div className="font-medium flex items-center gap-2">
+                  {loggingEnabled ? (
+                    <>
+                      <EyeIcon className="size-4 text-green-500" />
+                      <span>Logging is currently enabled</span>
+                    </>
+                  ) : (
+                    <>
+                      <EyeOffIcon className="size-4 text-red-500" />
+                      <span>Logging is currently disabled</span>
+                    </>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  When enabled, only data regarding your question and the model's final response will be logged. Your uploaded course evaluations cannot be seen by us. Logging helps us understand how the model is doing and improve on its performance.
+                </p>
+              </div>
+            )}
+            
+            {updateLoggingError && (
+              <Alert variant="destructive">
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{updateLoggingError}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+          
+          <DialogFooter className="sm:justify-between flex-col sm:flex-row gap-3">
+            <Button 
+              variant={loggingEnabled ? "outline" : "default"}
+              className={!loggingEnabled ? "bg-primary" : ""}
+              onClick={() => toggleLogging(false)}
+              disabled={isLoadingLoggingStatus || (!loggingEnabled)}
+            >
+              <EyeOffIcon className="size-4 mr-2" />
+              Opt Out
+            </Button>
+            <Button 
+              variant={!loggingEnabled ? "outline" : "default"}
+              className={loggingEnabled ? "bg-primary" : ""}
+              onClick={() => toggleLogging(true)}
+              disabled={isLoadingLoggingStatus || loggingEnabled}
+            >
+              <EyeIcon className="size-4 mr-2" />
+              Opt In
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* New Chat Confirmation Dialog */}
       <NewChatDialog 
@@ -276,6 +436,20 @@ const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
    Other Components (preserved implementations)
 -------------------------------------------------------------------------- */
 const ThreadWelcome: FC = () => {
+  // Add state for button loading state
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Function to trigger the file upload by dispatching a custom event
+  const handleUploadClick = () => {
+    setIsLoading(true);
+    // Create and dispatch a custom event that the sidebar can listen for
+    const event = new CustomEvent('trigger-eval-upload');
+    window.dispatchEvent(event);
+    
+    // Reset loading state after a short delay
+    setTimeout(() => setIsLoading(false), 1000);
+  };
+  
   return (
     <ThreadPrimitive.Empty>
       <div className="flex w-full max-w-[var(--thread-max-width)] flex-col items-center space-y-5 py-8">
@@ -299,12 +473,37 @@ const ThreadWelcome: FC = () => {
           </p>
         </div>
         
+        {/* Upload button - new addition */}
+        <Button
+          onClick={handleUploadClick}
+          className="bg-[#CC0000] hover:bg-[#990000] text-white transition-all duration-300 shadow-md hover:shadow-lg flex items-center gap-2 px-6 py-5 rounded-lg"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Uploading...
+            </>
+          ) : (
+            <>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-5 w-5">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              Upload Course Evaluations
+            </>
+          )}
+        </Button>
+        
         {/* Warning message about data persistence */}
         <div className="text-center p-2 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-md max-w-md">
           <p className="text-xs text-red-600 dark:text-red-400">
             <span className="font-semibold">Note:</span> All chats and uploaded files are deleted when you refresh or start a new chat. Please save important insights before closing.
           </p>
         </div>
+
         
         {/* Example questions - just two as requested */}
         <div className="flex flex-col sm:flex-row w-full gap-3 max-w-md">

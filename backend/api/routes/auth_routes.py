@@ -30,6 +30,8 @@ async def signup(user_data: UserCreate):
     
     # Hash the password
     hashed_password = auth_service.get_password_hash(user_data.password)
+
+    print("enable_logging: ", user_data.enable_logging)
     
     # Create new user
     new_user = {
@@ -37,7 +39,8 @@ async def signup(user_data: UserCreate):
         "hashed_password": hashed_password,
         "created_at": datetime.utcnow(),
         "requests_used": 0,
-        "requests_limit": 100
+        "requests_limit": 100,
+        "enable_logging": user_data.enable_logging
     }
     
     result = db.users.insert_one(new_user)
@@ -124,7 +127,8 @@ async def get_user_me(current_user: UserInDB = Depends(get_current_user)):
         "created_at": current_user.created_at,
         "active_chat_id": current_user.active_chat_id,
         "requests_used": current_user.requests_used,
-        "requests_limit": current_user.requests_limit
+        "requests_limit": current_user.requests_limit,
+        "enable_logging": current_user.enable_logging
     }
 
 @router.post("/logout")

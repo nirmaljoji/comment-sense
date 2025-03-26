@@ -229,16 +229,19 @@ def add_langgraph_route(app: FastAPI, graph, path: str, current_user: UserInDB =
         print("inputs")
         print(inputs)
 
-        trace = langfuse.trace(
-            user_id = current_user.email,
-            session_id = x_chat_id
-        )
-        trace.update(
-            input = inputs[-1].content[0]['text'],
-        )
-
         accumulated_content = "" 
         tool_calls = {} # Initialize an empty string to accumulate message content
+        
+        # Only create trace if user has enabled logging
+        trace = None
+        if current_user.enable_logging:
+            trace = langfuse.trace(
+                user_id = current_user.email,
+                session_id = x_chat_id
+            )
+            trace.update(
+                input = inputs[-1].content[0]['text'],
+            )
 
         async def run(controller: RunController):
             tool_calls = {}
@@ -290,9 +293,10 @@ def add_langgraph_route(app: FastAPI, graph, path: str, current_user: UserInDB =
                         tool_controller.append_args_text(chunk["args"])
             
             # After processing all message chunks, update the trace with the complete accumulated content
-            trace.update(
-                output = accumulated_content
-            )
+            if trace is not None:
+                trace.update(
+                    output = accumulated_content
+                )
 
         return DataStreamResponse(create_run(run))
 

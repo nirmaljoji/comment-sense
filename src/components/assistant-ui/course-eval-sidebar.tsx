@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { toast } from "sonner";
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from "@/lib/logger";
@@ -32,6 +32,20 @@ export function CourseEvalSidebar({ files, onDeleteFile, onFileUploaded }: Cours
   const [isUploading, setIsUploading] = useState(false);
 
   const API_URL = getApiUrl()
+
+  // Add event listener for the custom event
+  useEffect(() => {
+    const handleTriggerUpload = () => {
+      handleAddClick();
+    };
+    
+    window.addEventListener('trigger-eval-upload', handleTriggerUpload);
+    
+    // Clean up the event listener on component unmount
+    return () => {
+      window.removeEventListener('trigger-eval-upload', handleTriggerUpload);
+    };
+  }, []);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

@@ -5,6 +5,9 @@ import { Button } from './button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from './card';
 import { useRouter } from 'next/navigation';
 import { getApiUrl } from '@/lib/utils'
+import { Switch } from './switch';
+import { InfoCircledIcon } from '@radix-ui/react-icons';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './tooltip'; // Import tooltip components
 
 // Backend API URL - you can also use an environment variable
 const API_URL = getApiUrl();
@@ -33,6 +36,7 @@ export function AuthCard() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [enableLogging, setEnableLogging] = useState(false); // Changed default to false
   const router = useRouter();
 
   // Check for existing token on component mount
@@ -76,13 +80,13 @@ export function AuthCard() {
           return;
         }
 
-        // Sign up - direct API call to backend
+        // Sign up - direct API call to backend (now includes enableLogging)
         const response = await fetch(`${API_URL}/api/auth/signup`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ email, password, enable_logging: enableLogging }), // Use snake_case for API
         });
 
         if (!response.ok) {
@@ -119,7 +123,9 @@ export function AuthCard() {
 
     if (!response.ok) {
       const data = await response.json();
-      throw new Error(data.detail || 'Failed to login');
+      // Convert detail to string to avoid [object Object] errors
+    
+      throw new Error('Failed to login');
     }
 
     const data = await response.json();
@@ -187,20 +193,50 @@ export function AuthCard() {
             </div>
             
             {isSignUp && (
-              <div className="space-y-2">
-                <label htmlFor="confirmPassword" className="text-sm font-medium">
-                  Confirm Password
-                </label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="Confirm your password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
-                />
-              </div>
+              <>
+                <div className="space-y-2">
+                  <label htmlFor="confirmPassword" className="text-sm font-medium">
+                    Confirm Password
+                  </label>
+                  <input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="Confirm your password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-red-600 focus:ring-offset-2"
+                  />
+                </div>
+                
+                {/* New logging opt-in slider with info icon */}
+                <div className="flex items-center justify-between pt-2">
+                  <div className="flex items-center space-x-2">
+                    <label htmlFor="logging-toggle" className="text-sm font-medium">
+                      Enable logging
+                    </label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <InfoCircledIcon className="h-4 w-4 text-gray-500 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs p-3">
+                          <p>The data we collect is only used to improve the responses of the bot. We cannot access your uploaded Course Evaluations. Opting in for logging will only show us the model's responses.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                  <Switch
+                    id="logging-toggle"
+                    checked={enableLogging}
+                    onCheckedChange={(checked) => {
+                      console.log('Logging preference changed:', checked);
+                      setEnableLogging(checked);
+                    }}
+                    className="data-[state=checked]:bg-red-600"
+                  />
+                </div>
+              </>
             )}
             
             {/* Sign in/Sign up buttons */}
@@ -217,6 +253,7 @@ export function AuthCard() {
         </CardContent>
         
         <CardFooter className="flex flex-col space-y-4">
+          {/* Footer content - unchanged */}
           <div className="text-center text-sm">
             {isSignUp ? (
               <p>
@@ -228,6 +265,7 @@ export function AuthCard() {
                     setEmail('');
                     setPassword('');
                     setConfirmPassword('');
+                    // Note: enableLogging state is preserved intentionally
                   }}
                   className="text-red-600 hover:underline"
                 >
@@ -244,6 +282,7 @@ export function AuthCard() {
                     setEmail('');
                     setPassword('');
                     setConfirmPassword('');
+                    // Note: enableLogging state is preserved intentionally
                   }}
                   className="text-red-600 hover:underline"
                 >
@@ -260,4 +299,4 @@ export function AuthCard() {
       </Card>
     </div>
   );
-} 
+}

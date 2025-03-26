@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, EmailStr
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
+    enable_logging: bool 
     
 class UserLogin(BaseModel):
     email: EmailStr
@@ -17,6 +18,7 @@ class UserResponse(BaseModel):
     active_chat_id: Optional[str] = None
     requests_used: int = 0
     requests_limit: int = 100
+    enable_logging: bool = True
     
     class Config:
         from_attributes = True
@@ -37,6 +39,7 @@ class UserInDB(BaseModel):
     active_chat_id: Optional[str] = None
     requests_used: int = 0
     requests_limit: int = 100
+    enable_logging: bool = True
 
     class Config:
         from_attributes = True

@@ -6,6 +6,7 @@ from .database.mongodb import MongoDB
 from .routes.file_routes import router as file_router
 from .routes.auth_routes import router as auth_router
 from .routes.feedback_routes import router as feedback_router
+from .routes.logging_routes import router as logging_router
 from .utils.logger import logger
 from apscheduler.schedulers.background import BackgroundScheduler
 import requests
@@ -74,6 +75,7 @@ add_langgraph_route(app, assistant_ui_graph, "/api/chat")
 app.include_router(file_router, prefix="/api/files", tags=["files"])
 app.include_router(auth_router, prefix="/api/auth", tags=["auth"])
 app.include_router(feedback_router, prefix="/api/feedback", tags=["feedback"])
+app.include_router(logging_router)  # No prefix needed as it's defined in the router
 
 
 if __name__ == "__main__":
