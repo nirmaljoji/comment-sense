@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any
 from pydantic import BaseModel, Field
 
 class FileModel(BaseModel):
@@ -11,6 +11,7 @@ class FileModel(BaseModel):
     chat_id: str
     file_path: str
     created_at: datetime = datetime.utcnow()
+    processing_metrics: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
     class Config:
         from_attributes = True

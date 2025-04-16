@@ -22,9 +22,9 @@ class FileService:
             if not current_user or not current_user.active_chat_id:
                 raise HTTPException(status_code=400, detail="No active chat session")
 
-            # Process document
+            # Process document with optimized batch processing
             doc_service = DocumentService()
-            await doc_service.process_file(
+            processing_result = await doc_service.process_file(
                 file.file,
                 file.filename,
                 file.content_type,
@@ -32,7 +32,10 @@ class FileService:
                 current_user.active_chat_id
             )
             
-            # Create file document
+            # Log processing metrics
+            logger.info(f"File processing metrics: {processing_result}")
+            
+            # Create file document with processing metrics
             file_doc = FileModel(
                 filename=file.filename,
                 mime_type=file.content_type,
@@ -40,14 +43,19 @@ class FileService:
                 user_id=str(current_user.id) if current_user else user_id,
                 file_id=file_id,
                 chat_id=current_user.active_chat_id,
-                file_path=f"/tmp/{file.filename}"  # Adding temporary file path
+                file_path=f"/tmp/{file.filename}",  # Adding temporary file path
+                processing_metrics={
+                    "chunks_created": processing_result.get("chunks_created", 0),
+                    "processing_time_seconds": processing_result.get("total_processing_time_seconds", 0),
+                    "processing_rate": processing_result.get("processing_rate", 0)
+                }
             )
             
             # Save file metadata to MongoDB
             db = MongoDB.get_db()
             db.files.insert_one(file_doc.dict())
             
-            logger.info(f"File processed successfully: {file.filename}")
+            logger.info(f"File processed successfully: {file.filename} with {processing_result.get('chunks_created', 0)} chunks")
             return file_doc
             
         except Exception as e:
