@@ -37,6 +37,8 @@ export function MyAssistant({ chatId }: MyAssistantProps) {
   const API_URL = getApiUrl()
   const { incrementRequests } = useRequestStats();
 
+  const [isUploading, setIsUploading] = useState(false); // Shared state for upload status
+
   const runtime = useChatRuntime({
     api: `${API_URL}/api/chat`,
     headers: {
@@ -86,8 +88,8 @@ export function MyAssistant({ chatId }: MyAssistantProps) {
   };
 
   return (
-    <AssistantRuntimeProvider 
-    runtime={runtime}
+    <AssistantRuntimeProvider
+      runtime={runtime}
     >
       <Dialog open={rateLimitDialogOpen} onOpenChange={setRateLimitDialogOpen}>
         <DialogContent>
@@ -104,19 +106,23 @@ export function MyAssistant({ chatId }: MyAssistantProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       <CourseEvaluationVectors />
       <WebScraping />
-      <TeachingMaterial/>
+      <TeachingMaterial />
       <div className="grid h-[calc(100vh-4rem)] grid-cols-[280px_1fr]">
         <CourseEvalSidebar
           files={files}
           onDeleteFile={handleDeleteFile}
           onFileUploaded={handleFileUploaded}
+          isUploading={isUploading}
+          setIsUploading={setIsUploading}
         />
-        
+
         <div className="px-4 py-4">
-          <Thread />
+          <Thread isUploading={false} setIsUploading={function (value: boolean): void {
+            throw new Error("Function not implemented.");
+          }} />
         </div>
       </div>
     </AssistantRuntimeProvider>
