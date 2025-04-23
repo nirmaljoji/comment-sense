@@ -14,7 +14,6 @@ import sys
 import importlib
 model = ChatOpenAI(model="gpt-4o")
 
-
 # Add this to your initialization code
 try:
     # Print Python version and location
@@ -39,7 +38,6 @@ try:
         print(f"  - {path}")
 except Exception as e:
     print(f"Error checking for module: {str(e)}")
-
 
 # Get the path to the Python interpreter in the current environment
 if os.environ.get("NODE_ENV") == "production":

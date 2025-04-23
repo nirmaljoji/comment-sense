@@ -145,7 +145,7 @@ function useAutoScroll() {
 /* -------------------------------------------------------------------------
    Main Thread Component (integrating the useAutoScroll hook)
 -------------------------------------------------------------------------- */
-export const Thread: FC = () => {
+export const Thread: FC<{ isUploading: boolean; setIsUploading: (value: boolean) => void }> = ({ isUploading, setIsUploading }) => {
   const { scrollViewportRef, handleScroll, showScrollButton, setIsAutoScrolling } =
     useAutoScroll();
 
@@ -166,7 +166,9 @@ export const Thread: FC = () => {
             className="absolute inset-0 overflow-y-auto"
           >
             <ThreadPrimitive.Viewport className="flex h-full flex-col items-center bg-inherit px-6 pt-8">
-              <ThreadWelcome />
+              <ThreadWelcome isUploading={false} setIsUploading={function (value: boolean): void {
+                throw new Error("Function not implemented.");
+              }} />
               <ThreadPrimitive.Messages
                 components={{
                   UserMessage,
@@ -239,7 +241,7 @@ const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
       setUpdateLoggingError(null);
       const token = localStorage.getItem('token');
       const API_URL = getApiUrl();
-      
+
       try {
         const response = await fetch(`${API_URL}/api/get_logging`, {
           method: 'GET',
@@ -248,11 +250,11 @@ const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
             'Authorization': `Bearer ${token}`
           },
         });
-        
+
         if (!response.ok) {
           throw new Error('Failed to fetch logging status');
         }
-        
+
         const data = await response.json();
         setLoggingEnabled(data.logging_enabled);
       } catch (error) {
@@ -263,7 +265,7 @@ const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
         setIsLoadingLoggingStatus(false);
       }
     };
-    
+
     fetchLoggingStatus();
   }, []);
 
@@ -271,7 +273,7 @@ const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
     setUpdateLoggingError(null);
     const token = localStorage.getItem('token');
     const API_URL = getApiUrl();
-    
+
     try {
       const response = await fetch(`${API_URL}/api/update_logging`, {
         method: 'POST',
@@ -283,11 +285,11 @@ const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
           logging_enabled: newValue
         }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to update logging preference');
       }
-      
+
       setLoggingEnabled(newValue);
       setLoggingDialogOpen(false);
     } catch (error) {
@@ -306,14 +308,14 @@ const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
           >
             <PlusCircleIcon className="h-1 w-1 size-5" />
           </LargeIconButton>
-          
+
           <LargeIconButton
             tooltip="Learn to Use"
             onClick={() => setLearnDialogOpen(true)}
           >
             <HelpCircleIcon className="h-1 w-1 size-5" />
           </LargeIconButton>
-          
+
           <LargeIconButton
             tooltip={`Logging: ${isLoadingLoggingStatus ? 'Loading...' : (loggingEnabled ? 'Enabled' : 'Disabled')}`}
             onClick={() => setLoggingDialogOpen(true)}
@@ -332,7 +334,7 @@ const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
             </div>
           </LargeIconButton>
         </div>
-        
+
         <ComposerPrimitive.Root
           className="focus-within:border-ring/20 flex w-full flex-wrap items-end rounded-lg border bg-inherit px-2.5 shadow-sm transition-colors ease-in"
           onSubmit={onSend}
@@ -359,7 +361,7 @@ const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
               Control how your conversation data is collected and used.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-4 space-y-4">
             {isLoadingLoggingStatus ? (
               <div className="flex justify-center py-6">
@@ -385,7 +387,7 @@ const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
                 </p>
               </div>
             )}
-            
+
             {updateLoggingError && (
               <Alert variant="destructive">
                 <AlertTitle>Error</AlertTitle>
@@ -393,9 +395,9 @@ const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
               </Alert>
             )}
           </div>
-          
+
           <DialogFooter className="sm:justify-between flex-col sm:flex-row gap-3">
-            <Button 
+            <Button
               variant={loggingEnabled ? "outline" : "default"}
               className={!loggingEnabled ? "bg-primary" : ""}
               onClick={() => toggleLogging(false)}
@@ -404,7 +406,7 @@ const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
               <EyeOffIcon className="size-4 mr-2" />
               Opt Out
             </Button>
-            <Button 
+            <Button
               variant={!loggingEnabled ? "outline" : "default"}
               className={loggingEnabled ? "bg-primary" : ""}
               onClick={() => toggleLogging(true)}
@@ -418,15 +420,15 @@ const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
       </Dialog>
 
       {/* New Chat Confirmation Dialog */}
-      <NewChatDialog 
-        open={newChatDialogOpen} 
-        onOpenChange={setNewChatDialogOpen} 
+      <NewChatDialog
+        open={newChatDialogOpen}
+        onOpenChange={setNewChatDialogOpen}
       />
 
       {/* Learn to Use Dialog */}
-      <LearnToUseDialog 
-        open={learnDialogOpen} 
-        onOpenChange={setLearnDialogOpen} 
+      <LearnToUseDialog
+        open={learnDialogOpen}
+        onOpenChange={setLearnDialogOpen}
       />
     </>
   );
@@ -435,21 +437,21 @@ const Composer: FC<{ onSend?: () => void }> = ({ onSend }) => {
 /* -------------------------------------------------------------------------
    Other Components (preserved implementations)
 -------------------------------------------------------------------------- */
-const ThreadWelcome: FC = () => {
+const ThreadWelcome: FC<{ isUploading: boolean; setIsUploading: (value: boolean) => void }> = ({ isUploading, setIsUploading }) => {
   // Add state for button loading state
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Function to trigger the file upload by dispatching a custom event
   const handleUploadClick = () => {
     setIsLoading(true);
     // Create and dispatch a custom event that the sidebar can listen for
     const event = new CustomEvent('trigger-eval-upload');
     window.dispatchEvent(event);
-    
+
     // Reset loading state after a short delay
     setTimeout(() => setIsLoading(false), 1000);
   };
-  
+
   return (
     <ThreadPrimitive.Empty>
       <div className="flex w-full max-w-[var(--thread-max-width)] flex-col items-center space-y-5 py-8">
@@ -464,7 +466,7 @@ const ThreadWelcome: FC = () => {
             </svg>
           </span>
         </div>
-        
+
         {/* Title and description */}
         <div className="text-center space-y-2 max-w-md">
           <h3 className="text-xl font-semibold">Course Evaluation Assistant</h3>
@@ -472,12 +474,12 @@ const ThreadWelcome: FC = () => {
             Upload evaluations, get insights, and discover strategies to enhance your teaching.
           </p>
         </div>
-        
+
         {/* Upload button - new addition */}
         <Button
           onClick={handleUploadClick}
           className="bg-[#CC0000] hover:bg-[#990000] text-white transition-all duration-300 shadow-md hover:shadow-lg flex items-center gap-2 px-6 py-5 rounded-lg"
-          disabled={isLoading}
+          disabled={isLoading || isUploading}
         >
           {isLoading ? (
             <>
@@ -496,7 +498,7 @@ const ThreadWelcome: FC = () => {
             </>
           )}
         </Button>
-        
+
         {/* Warning message about data persistence */}
         <div className="text-center p-2 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-md max-w-md">
           <p className="text-xs text-red-600 dark:text-red-400">
@@ -504,7 +506,7 @@ const ThreadWelcome: FC = () => {
           </p>
         </div>
 
-        
+
         {/* Example questions - just two as requested */}
         <div className="flex flex-col sm:flex-row w-full gap-3 max-w-md">
           <ThreadPrimitive.Suggestion
@@ -517,7 +519,7 @@ const ThreadWelcome: FC = () => {
               Analyze evaluation weak points
             </span>
           </ThreadPrimitive.Suggestion>
-          
+
           <ThreadPrimitive.Suggestion
             className="hover:bg-blue-50 dark:hover:bg-blue-900/20 flex flex-col justify-center rounded-lg border border-blue-100 dark:border-blue-900/30 p-2.5 transition-colors ease-in text-center"
             prompt="Analyze https://cft.vanderbilt.edu/guides-sub-pages/student-evaluations/ for teaching improvement tips"
@@ -529,7 +531,7 @@ const ThreadWelcome: FC = () => {
             </span>
           </ThreadPrimitive.Suggestion>
         </div>
-        
+
         {/* Feedback reminder */}
         <div className="flex items-center text-xs text-muted-foreground pt-4">
           <ThumbsUpIcon className="size-3.5 mr-1.5" />
@@ -649,13 +651,13 @@ const AssistantActionBar: FC = () => {
           // You can add user_id and message_id here if available
         }),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to submit feedback');
       }
-      
+
       console.log('Feedback submitted successfully');
-      
+
       // Reset the form
       setRating(0);
       setFeedbackText('');
@@ -694,14 +696,14 @@ const AssistantActionBar: FC = () => {
             <RefreshCwIcon />
           </TooltipIconButton>
         </ActionBarPrimitive.Reload>
-        <TooltipIconButton 
-          tooltip="Helpful" 
+        <TooltipIconButton
+          tooltip="Helpful"
           onClick={() => openFeedbackDialog('positive')}
         >
           <ThumbsUpIcon />
         </TooltipIconButton>
-        <TooltipIconButton 
-          tooltip="Not Helpful" 
+        <TooltipIconButton
+          tooltip="Not Helpful"
           onClick={() => openFeedbackDialog('negative')}
         >
           <ThumbsDownIcon />
@@ -719,7 +721,7 @@ const AssistantActionBar: FC = () => {
               Please rate this response and provide any feedback.
             </DialogDescription>
           </DialogHeader>
-          
+
           {/* Star Rating */}
           <div className="flex items-center justify-center space-x-1 py-4">
             {[1, 2, 3, 4, 5].map((star) => (
@@ -736,7 +738,7 @@ const AssistantActionBar: FC = () => {
               </button>
             ))}
           </div>
-          
+
           {/* Feedback Text Area */}
           <Textarea
             placeholder={feedbackType === 'positive' ? "What did you find helpful about this response?" : "How could this response be improved?"}
@@ -744,13 +746,13 @@ const AssistantActionBar: FC = () => {
             onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFeedbackText(e.target.value)}
             className="min-h-[100px]"
           />
-          
+
           <DialogFooter className="sm:justify-between">
             <DialogClose asChild>
               <Button variant="outline">Cancel</Button>
             </DialogClose>
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               onClick={handleFeedbackSubmit}
               disabled={rating === 0}
             >
