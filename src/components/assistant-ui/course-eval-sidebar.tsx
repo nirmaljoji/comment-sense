@@ -28,14 +28,21 @@ interface CourseEvalSidebarProps {
   onFileUploaded: (file: { id: string; name: string }) => void;
 }
 
-export function CourseEvalSidebar({ files, onDeleteFile, onFileUploaded }: CourseEvalSidebarProps) {
+export function CourseEvalSidebar({
+  files,
+  onDeleteFile,
+  onFileUploaded,
+  isUploading,
+  setIsUploading,
+}: CourseEvalSidebarProps & { isUploading: boolean; setIsUploading: (value: boolean) => void }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  // const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState("");
   const [currentFileId, setCurrentFileId] = useState<string | null>(null);
   const [processingStats, setProcessingStats] = useState<any>({});
   const [processingStage, setProcessingStage] = useState<string>("");
+  // const [isUploading, setIsUploading] = useState(false);
 
   const API_URL = getApiUrl()
 
@@ -44,20 +51,20 @@ export function CourseEvalSidebar({ files, onDeleteFile, onFileUploaded }: Cours
     const handleTriggerUpload = () => {
       handleAddClick();
     };
-    
+
     window.addEventListener('trigger-eval-upload', handleTriggerUpload);
-    
+
     // Clean up the event listener on component unmount
     return () => {
       window.removeEventListener('trigger-eval-upload', handleTriggerUpload);
     };
   }, []);
-  
+
   // Effect to poll for progress updates when a file is being uploaded
   useEffect(() => {
     let progressInterval: NodeJS.Timeout | null = null;
     let previousProgress = 0;
-    
+
     if (isUploading && currentFileId) {
       // Start polling for progress
       progressInterval = setInterval(async () => {
@@ -68,13 +75,13 @@ export function CourseEvalSidebar({ files, onDeleteFile, onFileUploaded }: Cours
               'Authorization': `Bearer ${token}`
             }
           });
-          
+
           if (response.ok) {
             const progressData = await response.json();
-            
+
             // Implement smooth progress transitions
             const newProgress = progressData.progress || 0;
-            
+
             // If progress is going backwards or jumping too much, smooth it out
             if (newProgress < previousProgress || newProgress - previousProgress > 20) {
               // Animate to the new value gradually
@@ -85,7 +92,7 @@ export function CourseEvalSidebar({ files, onDeleteFile, onFileUploaded }: Cours
                   return prev + step;
                 });
               };
-              
+
               // Update progress smoothly a few times
               const animation = setInterval(animateProgress, 100);
               setTimeout(() => clearInterval(animation), 500);
@@ -93,23 +100,23 @@ export function CourseEvalSidebar({ files, onDeleteFile, onFileUploaded }: Cours
               // Normal progress update
               setUploadProgress(newProgress);
             }
-            
+
             previousProgress = newProgress;
             setUploadStatus(progressData.message || "");
             setProcessingStats(progressData.stats || {});
             setProcessingStage(progressData.status || "");
-            
+
             // If processing is complete or errored, stop polling and reset upload state
             if (progressData.status === 'completed' || progressData.status === 'error') {
               // Set upload state to false to stop the spinner and change button text
               setIsUploading(false);
               setCurrentFileId(null);
-              
+
               if (progressInterval) {
                 clearInterval(progressInterval);
                 progressInterval = null;
               }
-              
+
               // If there was an error, show it
               if (progressData.status === 'error') {
                 toast.error(progressData.message || "An error occurred during file processing");
@@ -121,7 +128,7 @@ export function CourseEvalSidebar({ files, onDeleteFile, onFileUploaded }: Cours
         }
       }, 1000); // Poll every second
     }
-    
+
     // Cleanup interval on unmount or when upload completes
     return () => {
       if (progressInterval) {
@@ -141,7 +148,7 @@ export function CourseEvalSidebar({ files, onDeleteFile, onFileUploaded }: Cours
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'text/csv'
     ];
-    
+
     if (!allowedTypes.includes(file.type)) {
       toast.error('Invalid file type. Please upload a PDF, CSV, XLS, or XLSX file.');
       return;
@@ -153,17 +160,19 @@ export function CourseEvalSidebar({ files, onDeleteFile, onFileUploaded }: Cours
       toast.error('File is too large. Maximum size is 10MB.');
       return;
     }
-setIsUploading(true);
-setUploadProgress(0);
-setUploadStatus("Preparing upload...");
-setProcessingStage("started");
+    setIsUploading(true);
+    setUploadProgress(0);
+    setUploadStatus("Preparing upload...");
+    setProcessingStage("started");
 
-// Generate a unique ID for the file
-const fileId = uuidv4();
-setCurrentFileId(fileId);
+    // Generate a unique ID for the file
+    const fileId = uuidv4();
+    setCurrentFileId(fileId);
 
-const formData = new FormData();
-    
+    const formData = new FormData();
+
+    setIsUploading(true);
+
     formData.append('file', file);
     formData.append('file_id', fileId);
     const token = localStorage.getItem('token');
@@ -183,18 +192,18 @@ const formData = new FormData();
 
       const data = await response.json();
       logger.info('File uploaded successfully:', data);
-      
+
       // Update local files state with new file
       const newFile = {
         id: fileId,
         name: file.name
       };
-      
+
       // You'll need to implement this function in MyAssistant
       onFileUploaded(newFile);
-      
+
       toast.success('File uploaded successfully');
-      
+
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -225,7 +234,7 @@ const formData = new FormData();
       {/* Header */}
       <div className="p-4 border-b border-gray-200">
         <h2 className="text-lg font-semibold text-gray-900">Course Evaluations</h2>
-        <p className="text-sm text-gray-500">Manage your evaluation files</p>
+        <p className="text-sm text-gray-500"> Manage your evaluation files</p>
       </div>
 
       {/* File List */}
@@ -240,7 +249,7 @@ const formData = new FormData();
                 <FileText className="h-4 w-4 text-[#CC0000] flex-shrink-0" />
                 <span className="text-sm text-gray-700 truncate">{file.name}</span>
               </div>
-              
+
               <div className="flex-shrink-0">
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -287,7 +296,7 @@ const formData = new FormData();
                 <span className="text-sm font-semibold text-[#CC0000]">{Math.round(uploadProgress)}%</span>
               </div>
             </div>
-            
+
             {/* Progress Card Body */}
             <div className="p-3 bg-white">
               {/* Progress Bar */}
@@ -296,12 +305,12 @@ const formData = new FormData();
                 className="h-2 w-full mb-3"
                 indicatorClassName={`transition-all duration-500 ease-out ${uploadProgress === 100 ? "bg-green-500" : "bg-[#CC0000]"}`}
               />
-              
+
               {/* Status Message */}
               <div className="text-sm text-gray-600 mb-2">
                 {uploadStatus || "Processing file..."}
               </div>
-              
+
               {/* Processing Stats */}
               <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 mt-2">
                 <div className="flex items-center">
@@ -329,16 +338,16 @@ const formData = new FormData();
                   </span>
                 </div>
               </div>
-              
+
               {/* Stage Indicator */}
               <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-500">
                 <div className="flex justify-between items-center">
                   <span className="capitalize">
                     {uploadProgress === 0 ? "Starting" :
-                     uploadProgress >= 95 ? "Finalizing" :
-                     processingStats.current_stage ? processingStats.current_stage.replace('_', ' ') :
-                     processingStage ? processingStage.replace('_', ' ') :
-                     "Processing"}
+                      uploadProgress >= 95 ? "Finalizing" :
+                        processingStats.current_stage ? processingStats.current_stage.replace('_', ' ') :
+                          processingStage ? processingStage.replace('_', ' ') :
+                            "Processing"}
                   </span>
                   {processingStats.current_batch && processingStats.total_batches && (
                     <span className="bg-gray-100 px-2 py-0.5 rounded-full">
@@ -350,7 +359,7 @@ const formData = new FormData();
             </div>
           </div>
         )}
-        
+
         <Button
           onClick={handleAddClick}
           className="w-full bg-[#CC0000] hover:bg-[#990000] text-white"
@@ -371,4 +380,4 @@ const formData = new FormData();
       </div>
     </div>
   );
-} 
+}
